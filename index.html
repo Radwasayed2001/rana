@@ -1,0 +1,1211 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>عالم الحركة</title>
+<link rel="stylesheet" href="assets/fonts/fonts.css">
+<style>
+/* Layout: one full-screen "anatomy lab" stage — HUD on top, one scene in the middle,
+   dock or scene controls at the bottom. Dark-only by design: an X-ray light box. */
+:root {
+  color-scheme: dark;
+  --bg: #091113;
+  --bg2: #0f1a1d;
+  --panel: rgba(20, 34, 38, .82);
+  --panel2: rgba(30, 48, 53, .74);
+  --line: rgba(160, 205, 210, .15);
+  --line2: rgba(160, 205, 210, .3);
+  --fg: #e8f0ef;
+  --mute: #93a9ab;
+  --bone: #ecdfc4;
+  --muscle: #ff7a6b;
+  --muscle2: #e0503f;
+  --cart: #6fc3e6;
+  --ok: #4fd69c;
+  --bad: #ff6f86;
+  --gold: #ffd27a;
+  --f-display: 'Reem Kufi', 'IBM Plex Sans Arabic', 'Segoe UI', Tahoma, sans-serif;
+  --f-body: 'IBM Plex Sans Arabic', 'Segoe UI', Tahoma, system-ui, sans-serif;
+  --f-mono: 'JetBrains Mono', ui-monospace, Consolas, monospace;
+  --t-xs: .78rem; --t-s: .9rem; --t-m: 1.02rem; --t-l: 1.18rem; --t-xl: 1.5rem; --t-2xl: 1.95rem; --t-3xl: 2.8rem;
+  --r: 14px;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--fg); font-family: var(--f-body); font-size: 16px; line-height: 1.65; overflow: hidden; -webkit-font-smoothing: antialiased; }
+button, input, textarea, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--cart); outline-offset: 3px; border-radius: 8px; }
+[tabindex="-1"]:focus { outline: none; }
+b { color: #fff; font-weight: 700; }
+sub, sup { font-size: .68em; line-height: 0; }
+[hidden] { display: none !important; }
+.muted { color: var(--mute); font-size: var(--t-s); }
+
+.bg-glow { position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background: radial-gradient(55% 45% at 50% 35%, rgba(111,195,230,.09), transparent 70%), radial-gradient(40% 40% at 85% 100%, rgba(255,122,107,.08), transparent 70%); }
+.scan { position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: .35;
+  background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px); background-size: 40px 40px;
+  mask-image: radial-gradient(75% 60% at 50% 40%, #000 15%, transparent 80%); -webkit-mask-image: radial-gradient(75% 60% at 50% 40%, #000 15%, transparent 80%); }
+
+#app { position: relative; z-index: 1; height: 100%; display: grid; grid-template-rows: auto 1fr auto; grid-template-columns: minmax(0, 1fr); }
+
+/* HUD */
+.hud { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--line); background: rgba(9,17,19,.88); backdrop-filter: blur(8px); min-height: 58px; }
+.brand { font-family: var(--f-display); font-size: var(--t-l); display: flex; align-items: center; gap: 8px; white-space: nowrap; background: none; border: 0; padding: 4px; }
+.brand .vb { width: 12px; height: 26px; border-radius: 4px; background: repeating-linear-gradient(180deg, var(--bone) 0 5px, var(--cart) 5px 7px); box-shadow: 0 0 12px rgba(111,195,230,.5); }
+.hud-mid { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.hud-mid .mt { font-size: var(--t-s); color: var(--mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar { height: 6px; background: rgba(255,255,255,.07); border-radius: 99px; overflow: hidden; }
+.bar > i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--cart), var(--bone), var(--muscle)); border-radius: inherit; transition: width .5s ease; }
+.lvl { display: flex; align-items: center; gap: 8px; background: var(--panel); border: 1px solid var(--line); border-radius: 99px; padding: 4px 12px 4px 6px; white-space: nowrap; }
+.lvl .li { font-size: 1.15rem; }
+.lvl .ln { font-size: var(--t-xs); line-height: 1.2; }
+.lvl .ln small { display: block; color: var(--cart); font-family: var(--f-mono); }
+.iconbtn { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; min-width: 40px; height: 40px; display: grid; place-items: center; font-size: 1.05rem; padding: 0 10px; }
+.iconbtn:hover { border-color: var(--line2); }
+
+/* stage */
+.stage { position: relative; min-height: 0; overflow: hidden; }
+.view { position: absolute; inset: 0; overflow-y: auto; overflow-x: hidden; padding: 18px 16px; }
+.scene-wrap { min-height: 100%; display: grid; place-items: center; grid-template-columns: minmax(0, 1fr); }
+.scene { min-width: 0; width: 100%; max-width: 720px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 13px; padding-block: 6px 22px; }
+.anim-in { animation: rise .45s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+.big-ico { font-size: 3.3rem; line-height: 1; filter: drop-shadow(0 0 20px rgba(111,195,230,.4)); }
+.kicker { font-size: var(--t-xs); letter-spacing: .06em; color: var(--cart); display: inline-flex; gap: 6px; align-items: center; border: 1px solid rgba(111,195,230,.35); border-radius: 99px; padding: 2px 12px; background: rgba(111,195,230,.07); }
+.kicker.trap { color: var(--bad); border-color: rgba(255,111,134,.4); background: rgba(255,111,134,.08); }
+.kicker.predict { color: var(--gold); border-color: rgba(255,210,122,.4); background: rgba(255,210,122,.07); }
+.kicker.recall { color: var(--ok); border-color: rgba(79,214,156,.4); background: rgba(79,214,156,.08); }
+.kicker.lab { color: var(--muscle); border-color: rgba(255,122,107,.4); background: rgba(255,122,107,.08); }
+h1, h2, h3 { font-family: var(--f-display); font-weight: 700; margin: 0; text-wrap: balance; line-height: 1.3; }
+.sc-title { font-size: var(--t-2xl); }
+.q { font-family: var(--f-body); font-weight: 700; font-size: var(--t-l); line-height: 1.6; max-width: 60ch; text-wrap: balance; }
+.body { font-size: var(--t-m); max-width: 62ch; }
+.body p { margin: .4em 0; }
+.fx { font-family: var(--f-mono); font-size: .9em; direction: ltr; unicode-bidi: isolate; color: #cdeef7; }
+.arw { display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle; margin: 0 .25em; line-height: 1; }
+.arw .al { font-size: .62em; color: var(--muscle); white-space: nowrap; font-family: var(--f-body); }
+.arw .ar { color: var(--muscle); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.chip { border: 1px solid var(--line2); background: var(--panel); border-radius: 99px; padding: 3px 12px; font-size: var(--t-s); }
+.chips.big .chip { font-size: var(--t-m); padding: 6px 14px; }
+.split2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; max-width: 520px; margin: 8px auto; }
+.pane { border: 1px solid var(--line); background: var(--panel); border-radius: var(--r); padding: 12px; }
+
+/* diagram */
+.dgbox { width: 100%; max-width: 560px; position: relative; border-radius: 18px; border: 1px solid var(--line); background: radial-gradient(80% 70% at 50% 40%, #12262b, #0a1416); padding: 8px; }
+.dgbox.tall .dg { max-height: min(60vh, 540px); }
+.dg { overflow: hidden; width: 100%; height: auto; display: block; max-height: min(48vh, 440px); margin-inline: auto; direction: ltr; }
+.dg-img image { filter: invert(1) hue-rotate(180deg) contrast(1.35) brightness(1.25); mix-blend-mode: screen; }
+.dsplit { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; width: 100%; max-width: 860px; align-items: center; }
+.dsplit .side { display: grid; gap: 10px; justify-items: center; min-width: 0; }
+@media (min-width: 760px) { .dsplit { grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); } .dsplit .dgbox.tall .dg { max-height: calc(100vh - 280px); min-height: 380px; } }
+.dlab { fill: var(--mute); font: 11px var(--f-body); }
+.ion { fill: #fff; font: 11px var(--f-mono); }
+.ion.ca { fill: var(--gold); } .ion.na { fill: #ffb3c0; }
+.chg { font: 700 14px var(--f-mono); } .chg.pos { fill: #ffe08a; } .chg.neg { fill: #8fd3ff; }
+.hs { cursor: pointer; }
+.hs .ring { fill: rgba(111,195,230,.12); stroke: var(--cart); stroke-width: 2; vector-effect: non-scaling-stroke; }
+.hs .dot { fill: var(--cart); }
+.hs.pulse .ring { animation: ring 1.8s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes ring { 50% { transform: scale(1.25); opacity: .55; } }
+.hs:hover .ring, .hs:focus .ring { fill: rgba(111,195,230,.3); }
+.hs:focus { outline: none; }
+.hs:focus-visible .ring { stroke: var(--gold); stroke-width: 3; }
+.hs.seen .ring { fill: rgba(79,214,156,.22); stroke: var(--ok); }
+.hs.seen .dot { fill: var(--ok); }
+.hs.cur .ring { fill: rgba(255,210,122,.3); stroke: var(--gold); }
+.hs.right .ring { fill: rgba(79,214,156,.35); stroke: var(--ok); }
+.hs.wrong .ring { fill: rgba(255,111,134,.35); stroke: var(--bad); }
+.hs .num { fill: #091113; font: 700 12px var(--f-mono); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+.hs.rect .ring { rx: 8; }
+.spot-card { width: 100%; max-width: 560px; text-align: start; border: 1px solid var(--line2); border-radius: 14px; background: var(--panel); padding: 10px 14px; min-height: 64px; font-size: var(--t-s); }
+.spot-card h3 { font-size: var(--t-m); color: var(--cart); margin-bottom: 2px; }
+.prog { font-size: var(--t-xs); color: var(--mute); }
+.dg-note { font-size: var(--t-xs); color: var(--mute); }
+.ask { font-size: var(--t-l); font-weight: 700; }
+.ask b { color: var(--gold); }
+
+/* options */
+.opts { display: grid; gap: 10px; width: 100%; max-width: 600px; }
+.opts.gopts { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.opt { display: flex; align-items: center; gap: 12px; text-align: start; width: 100%; border: 1px solid var(--line); background: var(--panel); border-radius: var(--r); padding: 12px 14px; font-size: var(--t-m); transition: border-color .15s, background .15s; }
+.opt:hover:not(:disabled) { border-color: rgba(111,195,230,.55); background: var(--panel2); }
+.opt .k { flex: none; width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; background: rgba(255,255,255,.06); font-family: var(--f-display); font-size: var(--t-s); color: var(--cart); }
+.opt .ot { flex: 1; min-width: 0; }
+.mgraph { width: 100%; max-width: 170px; color: var(--fg); display: block; }
+.opt.is-right { border-color: var(--ok); background: rgba(79,214,156,.12); }
+.opt.is-right .k { background: var(--ok); color: #052; }
+.opt.is-wrong { border-color: var(--bad); background: rgba(255,111,134,.1); opacity: .8; }
+.opt.is-wrong .k { background: var(--bad); color: #300; }
+.opt:disabled { cursor: default; }
+.shake { animation: shake .35s; }
+@keyframes shake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
+
+.fb { width: 100%; max-width: 600px; text-align: start; border-radius: var(--r); border: 1px solid var(--line); background: var(--panel); padding: 12px 14px; display: grid; gap: 8px; font-size: var(--t-s); }
+.fb.ok { border-color: rgba(79,214,156,.5); }
+.fb.bad { border-color: rgba(255,111,134,.5); }
+.fb-h { font-family: var(--f-display); font-size: var(--t-l); }
+.fb.ok .fb-h { color: var(--ok); }
+.fb.bad .fb-h { color: var(--bad); }
+.fb-row { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: start; }
+.fb-row > span:first-child { white-space: nowrap; color: var(--mute); font-size: var(--t-xs); padding-top: 2px; min-width: 96px; }
+.fb-row > div { min-width: 0; }
+.linkbtn { background: none; border: 0; color: var(--cart); text-decoration: underline; text-underline-offset: 3px; padding: 2px; font-size: var(--t-s); }
+
+.btn { border: 0; border-radius: 12px; padding: 12px 22px; font-weight: 700; font-size: var(--t-m); background: linear-gradient(180deg, #ff8d7f, #e8584a); color: #2a0703; box-shadow: 0 6px 22px rgba(255,122,107,.28), inset 0 1px 0 rgba(255,255,255,.3); }
+.btn:hover:not(:disabled) { filter: brightness(1.07); }
+.btn:disabled { background: #233236; color: #6c8083; box-shadow: none; cursor: not-allowed; }
+.btn.ghost { background: var(--panel); color: var(--fg); border: 1px solid var(--line2); box-shadow: none; }
+.btn.small { padding: 8px 14px; font-size: var(--t-s); }
+.btn.pulse:not(:disabled) { animation: pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 50% { box-shadow: 0 6px 32px rgba(255,122,107,.55), inset 0 1px 0 rgba(255,255,255,.3); } }
+.row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; align-items: center; }
+
+.scenebar { display: flex; gap: 8px; align-items: center; padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--line); background: rgba(9,17,19,.9); backdrop-filter: blur(8px); }
+.scenebar .sp { flex: 1; }
+.scenebar .btn:last-child { min-width: 128px; }
+
+.dock { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-top: 1px solid var(--line); background: rgba(9,17,19,.92); padding-bottom: env(safe-area-inset-bottom, 0px); }
+.dock button { background: none; border: 0; padding: 8px 2px 9px; display: flex; flex-direction: column; align-items: center; gap: 1px; font-size: var(--t-xs); line-height: 1.25; color: var(--mute); position: relative; min-width: 0; text-align: center; }
+.dock button .di { font-size: 1.25rem; filter: grayscale(.4); }
+.dock button[aria-current="page"] { color: var(--fg); }
+.dock button[aria-current="page"] .di { filter: none; }
+.dock button[aria-current="page"]::before { content: ""; position: absolute; top: 0; inset-inline: 28%; height: 2px; background: var(--cart); border-radius: 2px; box-shadow: 0 0 10px var(--cart); }
+.badge { position: absolute; top: 4px; inset-inline-start: calc(50% + 6px); background: var(--muscle); color: #2a0703; border-radius: 99px; font-size: 10px; font-weight: 700; padding: 0 5px; line-height: 16px; font-family: var(--f-mono); }
+
+/* title */
+.title-screen { min-height: 100%; display: grid; grid-template-columns: auto auto; gap: 28px; align-items: center; justify-content: center; text-align: center; }
+.title-fig { isolation: isolate; height: min(70vh, 560px); position: relative; background: var(--bg); overflow: hidden; }
+.title-fig img { height: 100%; display: block; filter: invert(1) hue-rotate(180deg) contrast(1.35) brightness(1.25); mix-blend-mode: screen; }
+.title-fig::after { content: ""; position: absolute; inset-inline: -20%; height: 18%; top: 0; background: linear-gradient(180deg, transparent, rgba(111,195,230,.35), transparent); animation: scanline 4.2s linear infinite; }
+@keyframes scanline { from { top: -18%; } to { top: 100%; } }
+.title-inner { display: flex; flex-direction: column; align-items: center; gap: 14px; max-width: 380px; }
+.title-screen h1 { font-size: var(--t-3xl); text-shadow: 0 0 36px rgba(111,195,230,.35); }
+.latin { font-family: var(--f-mono); letter-spacing: .45em; font-size: var(--t-xs); color: var(--cart); direction: ltr; }
+.title-screen p { color: var(--mute); margin: 0; }
+
+/* map */
+.map-view { padding: 10px 12px; display: grid; grid-template-columns: minmax(0, 1fr); }
+.map-view > .mapcol { display: flex; flex-direction: column; min-height: 0; height: 100%; }
+.mapwrap { position: relative; display: flex; justify-content: center; align-items: stretch; flex: 1; min-height: 460px; }
+.bodymap { isolation: isolate; background: var(--bg); border-radius: 16px; position: relative; height: 100%; aspect-ratio: 456 / 926; max-width: 100%; }
+.bodymap > img { width: 100%; height: 100%; display: block; filter: invert(1) hue-rotate(180deg) contrast(1.35) brightness(1.25); mix-blend-mode: screen; }
+.glow { position: absolute; width: 22%; aspect-ratio: 1; transform: translate(-50%, -50%); border-radius: 50%; background: radial-gradient(circle, rgba(79,214,156,.35), transparent 70%); pointer-events: none; }
+.node { position: absolute; transform: translate(-50%, -50%); background: none; border: 0; padding: 0; display: flex; align-items: center; gap: 6px; }
+.node .ni { width: 46px; height: 46px; flex: none; border-radius: 50%; display: grid; place-items: center; font-size: 1.35rem; background: var(--bg2); border: 2px solid var(--line2); position: relative; transition: transform .2s; }
+.node:hover .ni { transform: scale(1.07); }
+.node .nl { position: absolute; top: 50%; transform: translateY(-50%); white-space: nowrap; font-size: var(--t-xs); background: rgba(9,17,19,.85); border: 1px solid var(--line); border-radius: 8px; padding: 1px 7px; }
+.node.lr .nl { left: calc(100% + 4px); }
+.node.ll .nl { right: calc(100% + 4px); }
+.node .ns { position: absolute; bottom: -4px; inset-inline-end: -4px; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-size: 10px; background: var(--bg2); border: 1px solid var(--line2); }
+.node.done .ni { border-color: var(--ok); box-shadow: 0 0 16px rgba(79,214,156,.3); }
+.node.done .ns { background: var(--ok); color: #052; border-color: var(--ok); }
+.node.current .ni { border-color: var(--muscle); box-shadow: 0 0 0 6px rgba(255,122,107,.12), 0 0 26px rgba(255,122,107,.55); animation: beacon 2s ease-in-out infinite; }
+@keyframes beacon { 50% { box-shadow: 0 0 0 10px rgba(255,122,107,.04), 0 0 34px rgba(255,122,107,.7); } }
+.node.locked .ni { filter: grayscale(1) brightness(.6); border-style: dashed; }
+.node.locked .nl { color: var(--mute); }
+.node.final .ni { border-color: var(--gold); width: 54px; height: 54px; font-size: 1.6rem; }
+.node.sel .ni { outline: 2px solid var(--cart); outline-offset: 4px; }
+.map-legend { position: absolute; top: 4px; inset-inline-start: 4px; font-size: var(--t-xs); color: var(--mute); display: grid; gap: 2px; text-align: start; }
+.map-tip { text-align: center; font-size: var(--t-s); color: var(--mute); margin-bottom: 4px; }
+.sheet { position: absolute; inset-inline: 12px; bottom: 12px; z-index: 5; background: rgba(15,26,29,.97); border: 1px solid var(--line2); border-radius: 18px; padding: 16px; box-shadow: 0 -10px 40px rgba(0,0,0,.5); display: grid; gap: 10px; max-width: 520px; margin-inline: auto; animation: rise .3s both; }
+.sheet-h { display: flex; gap: 12px; align-items: center; }
+.sheet-h .si { font-size: 2rem; }
+.sheet-h h2 { font-size: var(--t-xl); }
+.sheet-h p { margin: 0; color: var(--mute); font-size: var(--t-s); }
+.sheet .x { margin-inline-start: auto; align-self: start; }
+.mastery { display: grid; gap: 6px; }
+.mrow { display: grid; grid-template-columns: 120px 1fr 40px; gap: 8px; align-items: center; font-size: var(--t-xs); }
+.mrow .bar { height: 8px; }
+.mrow.u .bar > i { background: linear-gradient(90deg, #2f86b5, var(--cart)); }
+.mrow.p .bar > i { background: linear-gradient(90deg, var(--muscle2), var(--muscle)); }
+.mrow.e .bar > i { background: linear-gradient(90deg, #1d9c6b, var(--ok)); }
+.mrow b { font-family: var(--f-mono); font-weight: 500; color: var(--mute); font-size: 11px; text-align: end; }
+.note { font-size: var(--t-xs); color: var(--mute); }
+
+/* interactions */
+.panel { width: 100%; max-width: 640px; border: 1px solid var(--line); background: var(--panel); border-radius: 18px; padding: 14px; }
+.given { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.given span { border: 1px dashed var(--line2); border-radius: 10px; padding: 4px 10px; font-size: var(--t-s); }
+.fields { display: grid; gap: 8px; width: 100%; max-width: 460px; }
+.field { display: flex; justify-content: space-between; align-items: center; gap: 10px; text-align: start; font-size: var(--t-s); }
+.num-in { width: 130px; text-align: center; font-family: var(--f-mono); font-size: var(--t-l); background: var(--bg2); border: 1px solid var(--line2); border-radius: 12px; padding: 6px; direction: ltr; }
+.num-in.ok { border-color: var(--ok); } .num-in.no { border-color: var(--bad); }
+.order-slots { display: grid; gap: 8px; width: 100%; max-width: 560px; }
+.slot { display: flex; align-items: center; gap: 10px; min-height: 44px; border: 1px dashed var(--line2); border-radius: 12px; padding: 7px 12px; text-align: start; font-size: var(--t-s); }
+.slot .sn { flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: rgba(255,255,255,.06); font-family: var(--f-mono); font-size: 12px; color: var(--cart); }
+.slot.filled { border-style: solid; border-color: rgba(79,214,156,.5); background: rgba(79,214,156,.07); }
+.pool { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; width: 100%; max-width: 640px; }
+.tok { border: 1px solid var(--line2); background: var(--panel2); border-radius: 12px; padding: 8px 14px; font-size: var(--t-s); max-width: 100%; }
+.tok:hover:not(:disabled) { border-color: var(--cart); }
+.tok.sel, .tok[aria-selected="true"], .tok[aria-pressed="true"] { border-color: var(--cart); background: rgba(111,195,230,.14); box-shadow: 0 0 0 3px rgba(111,195,230,.12); }
+.tok:disabled { opacity: .35; cursor: default; }
+.tok.m0:disabled, .tok.m1:disabled, .tok.m2:disabled, .tok.m3:disabled, .tok.m4:disabled, .tok.m5:disabled { opacity: 1; }
+.tok.done { border-color: var(--ok); color: var(--ok); }
+.match { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; width: 100%; max-width: 660px; }
+.match .col { display: grid; gap: 8px; align-content: start; }
+.match .tok { width: 100%; text-align: center; min-height: 46px; display: flex; align-items: center; justify-content: center; gap: 6px; flex-wrap: wrap; }
+.jicon { width: 34px; height: 34px; flex: none; }
+.tok.m0 { border-color: #4fd69c; background: rgba(79,214,156,.12); }
+.tok.m1 { border-color: #6fc3e6; background: rgba(111,195,230,.12); }
+.tok.m2 { border-color: #ffd27a; background: rgba(255,210,122,.12); }
+.tok.m3 { border-color: #ff8fb1; background: rgba(255,143,177,.12); }
+.tok.m4 { border-color: #c6a7ff; background: rgba(198,167,255,.12); }
+.tok.m5 { border-color: #ff9b6b; background: rgba(255,155,107,.12); }
+.bins { display: grid; gap: 10px; width: 100%; max-width: 700px; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+.bin { border: 1px solid var(--line2); background: rgba(255,255,255,.03); border-radius: 14px; padding: 10px; min-height: 86px; display: flex; flex-direction: column; gap: 6px; text-align: center; }
+.bin > button.bh { background: none; border: 0; font-family: var(--f-display); font-size: var(--t-m); padding: 4px; border-radius: 8px; }
+.bin.target { border-color: var(--cart); box-shadow: inset 0 0 24px rgba(111,195,230,.08); }
+.bin .in { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.bin .in span { font-size: var(--t-xs); border-radius: 8px; padding: 3px 8px; background: rgba(79,214,156,.12); border: 1px solid rgba(79,214,156,.4); }
+.flips { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; width: 100%; max-width: 640px; }
+.flip { min-height: 170px; border-radius: 16px; border: 1px solid var(--line2); background: var(--panel2); padding: 12px; font-size: var(--t-s); line-height: 1.6; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; }
+.flip.open { background: var(--panel); border-color: rgba(255,122,107,.5); }
+.micon { width: 100%; max-width: 140px; }
+textarea.teach { width: 100%; max-width: 600px; min-height: 110px; resize: vertical; background: var(--bg2); border: 1px solid var(--line2); border-radius: 14px; padding: 12px; line-height: 1.7; }
+.model { width: 100%; max-width: 600px; text-align: start; border-inline-start: 3px solid var(--cart); background: var(--panel); border-radius: 10px; padding: 12px 14px; font-size: var(--t-s); }
+.cp-inputs { display: grid; gap: 8px; width: 100%; max-width: 480px; }
+.cp-inputs input { background: var(--bg2); border: 1px solid var(--line2); border-radius: 12px; padding: 10px 12px; }
+.labels { display: grid; gap: 8px; width: 100%; max-width: 460px; }
+.lrow { display: flex; align-items: center; gap: 10px; }
+.lrow .ln { flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--cart); color: #091113; font: 700 13px var(--f-mono); }
+.lrow select { flex: 1; min-width: 0; background: var(--bg2); border: 1px solid var(--line2); border-radius: 10px; padding: 8px; }
+.lrow.ok select { border-color: var(--ok); } .lrow.no select { border-color: var(--bad); }
+.tabs { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
+.journey { width: 100%; max-width: 420px; display: grid; gap: 0; justify-items: center; }
+.jnode { display: flex; gap: 10px; align-items: center; border: 1px solid rgba(79,214,156,.45); background: rgba(79,214,156,.08); border-radius: 12px; padding: 6px 12px; font-size: var(--t-s); width: 100%; text-align: start; }
+.jnode b { white-space: nowrap; }
+.jnode span { color: var(--mute); font-size: var(--t-xs); }
+.jline { width: 2px; height: 14px; background: linear-gradient(var(--ok), var(--cart)); }
+.jnode.next { border-style: dashed; border-color: var(--line2); background: none; justify-content: center; color: var(--mute); }
+
+/* boss */
+.boss-h { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 100%; max-width: 560px; }
+.boss-ico { font-size: 3.8rem; line-height: 1; filter: drop-shadow(0 0 24px rgba(255,111,134,.45)); }
+.boss-ico.hit { animation: hit .45s; }
+@keyframes hit { 30% { transform: scale(.86) rotate(-6deg); filter: brightness(1.6); } }
+.hp { display: flex; gap: 4px; width: 100%; max-width: 360px; }
+.hp i { flex: 1; height: 10px; border-radius: 3px; background: linear-gradient(90deg, #b8233a, var(--bad)); transition: opacity .4s; }
+.hp i.gone { opacity: .15; filter: grayscale(1); }
+.step-chip { font-size: var(--t-xs); color: var(--gold); border: 1px solid rgba(255,210,122,.4); border-radius: 99px; padding: 2px 10px; }
+
+/* labs */
+.seg { display: inline-flex; border: 1px solid var(--line2); border-radius: 10px; overflow: hidden; }
+.seg button { background: none; border: 0; padding: 6px 10px; font-size: var(--t-s); color: var(--mute); }
+.seg button + button { border-inline-start: 1px solid var(--line); }
+.seg button[aria-pressed="true"] { background: rgba(111,195,230,.16); color: var(--fg); }
+.pred-rows { display: grid; gap: 8px; width: 100%; max-width: 520px; }
+.pred-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; font-size: var(--t-s); }
+.meters { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; width: 100%; max-width: 520px; }
+.meter { border: 1px solid var(--line); border-radius: 10px; padding: 6px; font-size: var(--t-xs); }
+.meter b { display: block; font-family: var(--f-mono); font-size: var(--t-l); color: var(--cart); }
+input[type=range] { width: 100%; max-width: 460px; accent-color: var(--muscle); }
+.result { width: 100%; max-width: 600px; border-radius: 14px; padding: 12px; border: 1px solid var(--line2); background: var(--panel); text-align: start; font-size: var(--t-s); display: grid; gap: 6px; }
+.zoomer { animation: zoomin .55s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes zoomin { from { transform: scale(.4); opacity: 0; filter: blur(6px); } to { transform: none; opacity: 1; filter: none; } }
+.lvlchips { display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; font-size: var(--t-xs); }
+.lvlchips span { padding: 2px 8px; border-radius: 99px; border: 1px solid var(--line); color: var(--mute); }
+.lvlchips span.on { border-color: var(--cart); color: var(--fg); }
+.phase-dots { display: flex; gap: 5px; justify-content: center; }
+.phase-dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--line2); }
+.phase-dots i.on { background: var(--muscle); }
+.zap { animation: zap .9s linear infinite; }
+@keyframes zap { 50% { stroke: #fff6b0; } }
+.spin { animation: spin 3s ease-in-out infinite; transform-origin: 50px 50px; }
+@keyframes spin { 50% { transform: rotate(35deg); } }
+.swing { animation: swing 2.4s ease-in-out infinite; transform-origin: 50px 51px; }
+@keyframes swing { 50% { transform: rotate(-60deg); } }
+.pivot { animation: piv 2.6s ease-in-out infinite; transform-origin: 38px 50px; }
+@keyframes piv { 50% { transform: scaleX(-1); } }
+
+/* overlays */
+.ovl { position: fixed; inset: 0; z-index: 50; background: rgba(3,7,8,.74); backdrop-filter: blur(6px); display: grid; place-items: center; padding: 16px; }
+.ovl-box { width: 100%; max-width: 800px; max-height: 100%; overflow: auto; background: #0e191c; border: 1px solid var(--line2); border-radius: 18px; padding: 18px; }
+.ovl-box.small { max-width: 540px; }
+.ovl-h { display: flex; align-items: center; gap: 10px; position: sticky; top: -18px; background: #0e191c; padding-block: 6px; margin-top: -6px; z-index: 1; }
+.ovl-h h2 { font-size: var(--t-xl); flex: 1; }
+.deep { font-size: var(--t-s); line-height: 1.85; }
+.deep h3 { font-size: var(--t-l); margin: 14px 0 6px; color: var(--cart); }
+.deep h4 { font-weight: 700; font-size: var(--t-m); margin: 14px 0 4px; }
+.deep p { margin: 6px 0; }
+.deep ul, .deep ol { padding-inline-start: 1.3em; margin: 6px 0; }
+.tblwrap { overflow-x: auto; }
+.tbl { width: 100%; border-collapse: collapse; font-size: var(--t-s); margin: 6px 0; }
+.tbl th, .tbl td { border: 1px solid var(--line); padding: 6px 8px; text-align: start; vertical-align: top; }
+.tbl thead th { background: rgba(111,195,230,.1); color: var(--cart); }
+.tbl tbody th { color: var(--mute); font-weight: 500; white-space: nowrap; }
+.src { border: 1px solid var(--line); border-radius: 12px; padding: 10px; margin: 8px 0; display: grid; grid-template-columns: 64px 1fr; gap: 10px; align-items: center; }
+.src img { width: 64px; height: 90px; object-fit: contain; background: #0a1416; border-radius: 8px; filter: invert(1) hue-rotate(180deg) contrast(1.35) brightness(1.25); mix-blend-mode: screen; }
+.src code { font-family: var(--f-mono); font-size: 11px; word-break: break-all; color: var(--mute); }
+
+#toasts { position: fixed; z-index: 60; top: calc(66px + env(safe-area-inset-top, 0px)); left: 12px; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; pointer-events: none; }
+.toast { background: rgba(15,26,29,.96); border: 1px solid rgba(111,195,230,.45); border-radius: 99px; padding: 6px 16px; font-size: var(--t-s); box-shadow: 0 8px 30px rgba(0,0,0,.4); animation: toast 2.6s ease forwards; }
+.toast.lvlup { border-color: var(--gold); color: var(--gold); font-family: var(--f-display); }
+@keyframes toast { 0% { opacity: 0; transform: translateY(-8px); } 10%, 82% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+
+.page { min-width: 0; width: 100%; max-width: 780px; margin-inline: auto; display: grid; gap: 14px; padding-bottom: 20px; }
+.page-h { text-align: center; display: grid; gap: 6px; justify-items: center; }
+.page-h h1 { font-size: var(--t-2xl); }
+.page-h p { margin: 0; color: var(--mute); max-width: 54ch; }
+.cards { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); }
+.card { text-align: start; border: 1px solid var(--line); background: var(--panel); border-radius: 14px; padding: 12px; display: grid; gap: 4px; }
+.card:hover { border-color: var(--line2); }
+.card .ct { font-family: var(--f-display); font-size: var(--t-m); }
+.card .cs { font-size: var(--t-xs); color: var(--mute); }
+.card.done { border-color: rgba(79,214,156,.4); }
+.filter { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.score { font-family: var(--f-display); font-size: var(--t-3xl); color: var(--cart); line-height: 1; }
+.fcard { width: 100%; max-width: 520px; min-height: 190px; border-radius: 18px; border: 1px solid var(--line2); background: linear-gradient(160deg, #15292e, #0d181b); padding: 20px; display: grid; place-items: center; gap: 10px; text-align: center; font-size: var(--t-l); }
+.fcard .back { color: var(--cart); font-size: var(--t-m); }
+
+/* final model */
+.model-grid { display: grid; grid-template-columns: 220px 1fr; gap: 18px; align-items: start; }
+.model-body { isolation: isolate; background: var(--bg); position: relative; aspect-ratio: 456 / 926; width: 100%; }
+.model-body img { width: 100%; height: 100%; filter: invert(1) hue-rotate(180deg) contrast(1.35) brightness(1.25); mix-blend-mode: screen; }
+.mtree { display: grid; gap: 10px; }
+.mnode { border: 1px solid var(--line2); background: var(--panel); border-radius: 14px; padding: 9px 12px; text-align: center; display: grid; gap: 3px; width: 100%; }
+.mnode.on { border-color: rgba(79,214,156,.55); box-shadow: 0 0 20px rgba(79,214,156,.14); }
+.mnode .mt { font-family: var(--f-display); }
+.mchips { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; }
+.mchips span { font-size: 11px; border-radius: 99px; padding: 1px 8px; border: 1px solid var(--line); color: var(--mute); }
+.mnode.on .mchips span { color: var(--fg); }
+.mbr { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.mcol { display: grid; gap: 6px; align-content: start; }
+.mcol > .bt { font-size: var(--t-xs); color: var(--mute); text-align: center; }
+.chain { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; align-items: center; font-size: var(--t-xs); }
+.chain span { border: 1px solid var(--line2); border-radius: 8px; padding: 2px 8px; }
+.chain i { color: var(--muscle); font-style: normal; }
+
+.mc, .mcw, .fbw, .zw, .zq, .nw, .nq, .tw, .tr, .sw, .sx-res, .cfb, .tm, .bw, #cw, .lfb, .jfb, .ofb, .mfb, .sfb { grid-template-columns: minmax(0, 1fr); min-width: 0; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+@media (max-width: 640px) {
+  :root { --t-2xl: 1.55rem; --t-3xl: 2.2rem; --t-l: 1.08rem; }
+  .hud { gap: 8px; padding: 8px 12px; }
+  .brand span.bt, .lvl .ln { display: none; }
+  .title-screen { grid-template-columns: 1fr; gap: 10px; }
+  .title-fig { height: 34vh; justify-self: center; }
+  .node .ni { width: 38px; height: 38px; font-size: 1.1rem; }
+  .node .nl { font-size: 11px; padding: 0 5px; }
+  .model-grid { grid-template-columns: 1fr; }
+  .model-body { max-width: 160px; margin-inline: auto; }
+  .mbr { grid-template-columns: 1fr; }
+  .meters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .scenebar .btn:last-child { min-width: 104px; padding-inline: 14px; }
+}
+@media (min-width: 980px) { .map-view.has-sheet { grid-template-columns: 1fr 380px; } .map-view.has-sheet .sheet { position: relative; inset: auto; margin: 16px; align-self: center; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; } }
+.rm *, .rm *::before, .rm *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
+</style>
+</head>
+<body>
+<div class="bg-glow" aria-hidden="true"></div>
+<div class="scan" aria-hidden="true"></div>
+<div id="app"></div>
+<div id="toasts" aria-live="polite"></div>
+<div id="live" class="sr" aria-live="assertive"></div>
+
+<script src="visuals.js"></script>
+<script src="content.js"></script>
+<script>
+(function () {
+'use strict';
+const C = window.BQ_CONTENT;
+
+/* visual sources (mirrors assets/sources/image-sources.json; fetch() is blocked on file://) */
+const SOURCES = [
+  { file: 'assets/images/skeleton-front.svg', title: 'Human skeleton front (no text, no color)', by: 'Mariana Ruiz Villarreal (LadyofHats)', license: 'Public domain', url: 'https://commons.wikimedia.org/wiki/File:Human_skeleton_front_no-text_no-color.svg', mod: 'غير معدّل؛ النقاط التفاعلية مرسومة فوقه.' },
+  { file: 'assets/images/skeleton-back.svg', title: 'Human skeleton back (no text, no color)', by: 'Mariana Ruiz Villarreal (LadyofHats)', license: 'Public domain', url: 'https://commons.wikimedia.org/wiki/File:Human_skeleton_back_no-text_no-color.svg', mod: 'غير معدّل؛ النقاط التفاعلية مرسومة فوقه.' }
+];
+
+/* ───── data prep ───── */
+const MIS = {};
+C.MISSIONS.forEach(m => { MIS[m.id] = m; });
+MIS.final = {
+  id: 'final', icon: '🏆', title: C.FINAL.title, sub: 'الزعيم النهائي', branch: 'final', req: ['spine', 'skull', 'ligaments', 'fatigue'], pages: 'الفصل كله',
+  concepts: ['الدعامة + الحركة'], spot: { x: 14, y: 76 },
+  scenes: [
+    { t: 'story', icon: '🏆', kicker: 'الزعيم النهائي', title: C.FINAL.title, body: '<p>' + C.FINAL.intro + '</p><div class="chips"><span class="chip">1. حدد المكان</span><span class="chip">2. فسّر</span><span class="chip">3. شخّص</span><span class="chip">4. احسب</span><span class="chip">5. توقّع</span><span class="chip">6. اشرح</span></div>', btn: 'ادخل غرفة الطبيب' },
+    { t: 'boss', icon: '🏋️', name: C.FINAL.title, intro: 'مفيش تايمر. 8 مواقف من الفصل كله.', qs: C.FINAL.steps, final: true },
+    { t: 'teach', icon: '🎤', prompt: C.FINAL.teach.prompt, model: C.FINAL.teach.model },
+    { t: 'finale' }
+  ],
+  deep: C.MISSIONS.map(m => m.deep).join('<hr style="border:0;border-top:1px solid var(--line);margin:18px 0">')
+};
+const ORDER = ['skeleton', 'spine', 'skull', 'limbs', 'joints', 'ligaments', 'muscles', 'contraction', 'fatigue', 'final'];
+C.EXAM.forEach((q, i) => { q.id = 'x' + i; });
+const CARDS = [];
+C.MISSIONS.forEach(m => (m.cards || []).forEach((c, i) => CARDS.push({ id: m.id + ':' + i, m: m.id, f: c[0], b: c[1] })));
+
+const XP = { mcq: 10, order: 10, match: 10, flip: 5, sort: 15, lab: 20, calc: 20, teach: 10, checkpoint: 5, boss: 50, exam: 15, explore: 10, find: 15, label: 15, toggle: 5, journey: 15 };
+const KIND = { mcq: '🧠 فهم', order: '🧠 فهم', match: '🧠 فهم', flip: '🧠 فهم', sort: '🧠 فهم', lab: '🔬 معمل', calc: '🧮 حساب', teach: '🎤 شرح', checkpoint: '☕ استرجاع', boss: '⚔️ زعيم', exam: '🎯 امتحان', explore: '🔍 استكشاف', find: '🎯 تشريح', label: '🏷️ تشريح', toggle: '🔍 استكشاف', journey: '🧭 رحلة' };
+const U_TYPES = new Set(['mcq', 'order', 'match', 'flip', 'teach', 'explore', 'toggle', 'sort']);
+const P_TYPES = new Set(['lab', 'calc', 'boss', 'find', 'label', 'journey']);
+const AR_KEYS = ['أ', 'ب', 'ج', 'د', 'هـ'];
+
+/* ───── state ───── */
+const KEY = 'bodyQuest.v1';
+function fresh() { return { v: 1, xp: 0, sc: {}, pos: {}, done: {}, exam: {}, examXP: {}, cards: {}, notes: {}, rm: false, revDay: '', started: false }; }
+let S = fresh();
+try { const raw = localStorage.getItem(KEY); if (raw) S = Object.assign(fresh(), JSON.parse(raw)); } catch (e) { }
+function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { } }
+let V = { name: 'title' };
+
+/* ───── utils ───── */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+function chem(src) {
+  const arrows = [];
+  let s = src.replace(/-\[([^\]]*)\]->/g, (m, l) => { arrows.push(l); return '\u0001' + (arrows.length - 1) + '\u0002'; }).replace(/->/g, () => { arrows.push(''); return '\u0001' + (arrows.length - 1) + '\u0002'; });
+  s = esc(s);
+  s = s.replace(/([A-Za-z\)])(\d+)/g, '$1<sub>$2</sub>');
+  s = s.replace(/\^([+-]?\d*[+-]?)/g, '<sup>$1</sup>');
+  s = s.replace(/\u0001(\d+)\u0002/g, (m, i) => '<span class="arw">' + (arrows[i] ? '<span class="al">' + esc(arrows[i]) + '</span>' : '') + '<span class="ar">⟶</span></span>');
+  return '<bdi class="fx" dir="ltr">' + s + '</bdi>';
+}
+function F(html) { return String(html == null ? '' : html).replace(/\$([^$]+)\$/g, (m, x) => chem(x)); }
+function plain(h) { return String(h).replace(/<[^>]+>/g, '').replace(/\$/g, ''); }
+function shuffle(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function el(html) { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; }
+function announce(t) { const l = $('#live'); l.textContent = ''; setTimeout(() => { l.textContent = plain(t); }, 30); }
+function reduced() { return S.rm || matchMedia('(prefers-reduced-motion: reduce)').matches; }
+function level(xp) { let L = C.LEVELS[0], N = null; C.LEVELS.forEach((l, i) => { if (xp >= l.xp) { L = l; N = C.LEVELS[i + 1] || null; } }); return { L, N }; }
+function toast(t, cls) { const d = el('<div class="toast ' + (cls || '') + '">' + F(t) + '</div>'); $('#toasts').appendChild(d); setTimeout(() => d.remove(), 2700); }
+function addXP(n, kind) {
+  if (!n) return;
+  const before = level(S.xp).L; S.xp += n; save();
+  toast((kind || '') + ' <b>+' + n + ' XP</b>');
+  const after = level(S.xp).L;
+  if (after !== before) setTimeout(() => toast('⬆️ ترقية: ' + after.icon + ' ' + after.name, 'lvlup'), 500);
+  updateHUD();
+}
+function finish(key, type, r, xpOverride) {
+  if (S.sc[key] && S.sc[key].d) return false;
+  S.sc[key] = { d: 1, r: Math.max(0, Math.min(1, r)) }; save();
+  addXP(xpOverride != null ? xpOverride : Math.round((XP[type] || 0) * (type === 'boss' ? 1 : Math.max(.5, r))), KIND[type]);
+  return true;
+}
+const isDone = key => !!(S.sc[key] && S.sc[key].d);
+function reqMet(id) { return (MIS[id].req || []).every(r => S.done[r]); }
+function status(id) { return S.done[id] ? 'done' : reqMet(id) ? 'open' : 'locked'; }
+function currentMission() { return ORDER.find(id => !S.done[id] && reqMet(id)) || null; }
+function scenesOf(id) { const m = MIS[id]; return id === 'final' ? m.scenes : m.scenes.concat([{ t: 'complete' }]); }
+function startedMission(id) { return Object.keys(S.sc).some(k => k.startsWith(id + ':')); }
+function mastery(id) {
+  const m = MIS[id], u = [0, 0], p = [0, 0];
+  m.scenes.forEach((sc, i) => { const rec = S.sc[id + ':' + i], r = rec ? rec.r : 0; const t = sc.t; if (U_TYPES.has(t)) { u[0] += r; u[1]++; } else if (P_TYPES.has(t)) { p[0] += r; p[1]++; } });
+  const ex = C.EXAM.filter(q => q.m === id);
+  return { u, p, e: [ex.filter(q => S.exam[q.id] === 1).length, ex.length] };
+}
+function masteryHTML(id) {
+  const M = mastery(id);
+  const row = (c, l, v) => { const pct = v[1] ? Math.round(100 * v[0] / v[1]) : null; return '<div class="mrow ' + c + '"><span>' + l + '</span><div class="bar"><i style="width:' + (pct || 0) + '%"></i></div><b>' + (pct == null ? '—' : pct + '%') + '</b></div>'; };
+  return '<div class="mastery">' + row('u', '🧠 الفهم', M.u) + row('p', '🔬 تشريح ومعامل', M.p) + row('e', '🎯 جاهزية الامتحان', M.e) + '<div class="note">مؤشرات لعب تقريبية، مش قياس علمي.</div></div>';
+}
+function dueCards() { const now = Date.now(); return CARDS.filter(c => startedMission(c.m) && (!S.cards[c.id] || S.cards[c.id].due <= now)); }
+
+/* ───── shell ───── */
+const app = $('#app');
+function shell(mode) {
+  app.innerHTML = '';
+  app.appendChild(el('<header class="hud"></header>'));
+  const stage = el('<main class="stage" id="stage"></main>');
+  app.appendChild(stage);
+  if (mode === 'mission') app.appendChild(el('<nav class="scenebar" id="scenebar" aria-label="تحكم المشهد"></nav>'));
+  else if (mode !== 'title') app.appendChild(dock());
+  else app.appendChild(el('<div></div>'));
+  updateHUD();
+  return stage;
+}
+function updateHUD() {
+  const hud = $('.hud'); if (!hud) return;
+  const { L, N } = level(S.xp);
+  let mid = '';
+  if (V.name === 'mission') {
+    const m = MIS[V.id], list = scenesOf(V.id);
+    mid = '<div class="mt">' + m.icon + ' ' + esc(m.title) + ' • المشهد ' + (V.i + 1) + ' من ' + list.length + '</div><div class="bar"><i style="width:' + Math.round(100 * (V.i + 1) / list.length) + '%"></i></div>';
+  } else if (V.name !== 'title') {
+    mid = '<div class="mt">' + L.icon + ' ' + L.name + (N ? ' • ' + (N.xp - S.xp) + ' XP للمستوى الجاي' : ' • أعلى مستوى') + '</div><div class="bar"><i style="width:' + (N ? Math.round(100 * (S.xp - L.xp) / (N.xp - L.xp)) : 100) + '%"></i></div>';
+  }
+  hud.innerHTML = (V.name === 'mission' ? '<button class="iconbtn" id="h-exit" aria-label="الرجوع للخريطة">🗺️</button>' : '<button class="brand" id="h-home" aria-label="الشاشة الرئيسية"><span class="vb"></span><span class="bt">عالم الحركة</span></button>') +
+    '<div class="hud-mid">' + mid + '</div><div class="lvl"><span class="li">' + L.icon + '</span><span class="ln">' + L.name + '<small>' + S.xp + ' XP</small></span></div>' +
+    '<button class="iconbtn" id="h-set" aria-label="الإعدادات والمصادر">⚙️</button>';
+  const ex = $('#h-exit'); if (ex) ex.onclick = () => go({ name: 'map', sel: V.id });
+  const hm = $('#h-home'); if (hm) hm.onclick = () => go({ name: 'title' });
+  $('#h-set').onclick = settings;
+}
+function dock() {
+  const due = dueCards().length;
+  const d = el('<nav class="dock" aria-label="الأوضاع"></nav>');
+  [['map', '🗺️', 'الرحلة'], ['labs', '🔬', 'استكشف'], ['exam', '🎯', 'الامتحان'], ['review', '🔁', 'مراجعة'], ['model', '🌌', 'الصورة الكاملة']].forEach(([n, i, t]) => {
+    const b = el('<button type="button"><span class="di">' + i + '</span><span>' + t + '</span>' + (n === 'review' && due ? '<span class="badge">' + due + '</span>' : '') + '</button>');
+    if (V.name === n || (n === 'labs' && V.name === 'sandbox')) b.setAttribute('aria-current', 'page');
+    b.onclick = () => go({ name: n }); d.appendChild(b);
+  });
+  return d;
+}
+function go(v) { V = v; render(); }
+function render() {
+  ({ title: rTitle, map: rMap, mission: rMission, labs: rLabs, sandbox: rSandbox, exam: rExam, review: rReview, model: rModel }[V.name] || rMap)();
+  document.body.classList.toggle('rm', !!S.rm);
+}
+
+/* ───── overlays ───── */
+let lastFocus = null;
+function overlay(title, html, small) {
+  closeOverlay(); lastFocus = document.activeElement;
+  const o = el('<div class="ovl" role="dialog" aria-modal="true" aria-label="' + esc(plain(title)) + '"><div class="ovl-box ' + (small ? 'small' : '') + '"><div class="ovl-h"><h2>' + F(title) + '</h2><button class="iconbtn" data-close aria-label="إغلاق">✕</button></div><div class="deep">' + F(html) + '</div></div></div>');
+  o.addEventListener('click', e => { if (e.target === o || e.target.closest('[data-close]')) closeOverlay(); });
+  document.body.appendChild(o); $('[data-close]', o).focus(); return o;
+}
+function closeOverlay() { const o = $('.ovl'); if (o) { o.remove(); if (lastFocus && document.contains(lastFocus)) lastFocus.focus(); } }
+function settings() {
+  const o = overlay('⚙️ الإعدادات والمصادر', `
+    <h4>الحركة</h4><p><label><input type="checkbox" id="set-rm" ${S.rm ? 'checked' : ''}> تقليل الحركة والأنيميشن</label></p>
+    <h4>📚 المحتوى</h4><p>كل المعلومات من صفحات «الفصل الأول – الدعامة والحركة» (ص 33–99) اللي اتبعتت كصور. صفحات الكتاب نفسها <b>مش</b> متضمنة في اللعبة.</p>
+    <h4>ℹ️ مصادر الصور</h4>
+    ${SOURCES.map(s => `<div class="src"><img src="${s.file}" alt=""><div><b>${esc(s.title)}</b><br>${esc(s.by)} • ${esc(s.license)}<br><code>${esc(s.url)}</code><br><span class="muted">${esc(s.mod)}</span></div></div>`).join('')}
+    <p class="muted">باقي الرسومات (العمود الفقري، الفقرة، القفص الصدري، الركبة، المفصل الزلالي، الساعد، الحوض، العضلة، الساركومير، التشابك العصبي العضلي، المنحنيات) مرسومة خصيصاً للعبة كـ SVG تعليمي مبسّط، ومكتوب جنب كل رسم مبسّط إنه مبسّط.</p>
+    <h4>إعادة البدء</h4><p class="muted">بيمسح كل تقدمك المحفوظ على الجهاز ده.</p>
+    <div class="row" style="justify-content:flex-start"><button class="btn ghost small" id="set-reset">🗑️ امسح التقدم</button><span id="set-confirm"></span></div>`, true);
+  $('#set-rm', o).onchange = e => { S.rm = e.target.checked; save(); document.body.classList.toggle('rm', S.rm); };
+  $('#set-reset', o).onclick = () => { $('#set-confirm', o).innerHTML = '<button class="btn small" id="set-yes">أيوه، امسح</button>'; $('#set-yes', o).onclick = () => { S = fresh(); save(); closeOverlay(); go({ name: 'title' }); }; };
+}
+
+/* ───── title ───── */
+function rTitle() {
+  const st = shell('title');
+  st.appendChild(el(`<section class="view"><div class="title-screen"><div class="title-fig" aria-hidden="true"><img src="assets/images/skeleton-front.svg" alt=""></div><div class="title-inner anim-in">
+    <div class="latin">BODY IN MOTION</div><h1>عالم الحركة</h1>
+    <p>206 عظمة… 620 عضلة… وأمر واحد من المخ.<br>ادخل الجسم واكتشف إزاي بتتحرك.</p>
+    <div class="row"><button class="btn pulse" id="t-start">${S.started ? 'كمّل الرحلة' : 'ابدأ الرحلة'}</button></div>
+    <p class="muted">الفصل الأول • الدعامة والحركة</p></div></div></section>`));
+  $('#t-start').onclick = () => { S.started = true; save(); go({ name: 'map', sel: currentMission() }); };
+  $('#t-start').focus();
+}
+
+/* ───── map (the body is the map) ───── */
+function rMap() {
+  if (V.sel === undefined) V.sel = currentMission();
+  const st = shell('map');
+  const cur = currentMission();
+  const view = el('<section class="view map-view" aria-label="خريطة الرحلة"><div class="mapcol"><div class="map-tip">' + (cur ? 'المهمة الحالية: ' + MIS[cur].icon + ' ' + esc(MIS[cur].title) : '🏆 خلّصت الجسم كله! جرّب الامتحان أو المراجعة.') + '</div><div class="mapwrap"><div class="bodymap"><img src="assets/images/skeleton-front.svg" alt="هيكل عظمي؛ كل مهمة نقطة على جزء من الجسم"></div><div class="map-legend"><span>🦴 الدعامة</span><span>💪 الحركة</span></div></div></div></section>');
+  st.appendChild(view);
+  const bm = $('.bodymap', view);
+  ORDER.forEach(id => {
+    const m = MIS[id], s = status(id), p = m.spot;
+    if (s === 'done') bm.appendChild(el('<span class="glow" style="left:' + p.x + '%;top:' + p.y + '%"></span>'));
+    const cls = ['node', s, id === cur ? 'current' : '', id === 'final' ? 'final' : '', V.sel === id ? 'sel' : '', p.x < 50 ? 'll' : 'lr'].join(' ');
+    const badge = s === 'done' ? '✓' : s === 'locked' ? '🔒' : id === cur ? '●' : '';
+    const b = el('<button class="' + cls + '" style="left:' + p.x + '%;top:' + p.y + '%" aria-label="' + esc(m.title) + ' — ' + ({ done: 'مكتملة', open: 'متاحة', locked: 'مقفولة' }[s]) + '"><span class="ni">' + m.icon + (badge ? '<span class="ns">' + badge + '</span>' : '') + '</span><span class="nl">' + esc(m.title) + '</span></button>');
+    b.onclick = () => { V.sel = id; rMap(); const n = $('.sheet .btn'); if (n) n.focus(); };
+    bm.appendChild(b);
+  });
+  if (V.sel && MIS[V.sel]) {
+    view.classList.add('has-sheet');
+    const id = V.sel, m = MIS[id], s = status(id), pos = S.pos[id] || 0;
+    const missing = (m.req || []).filter(r => !S.done[r]).map(r => MIS[r].icon + ' ' + MIS[r].title).join('، ');
+    const sh = el('<div class="sheet" role="region" aria-label="' + esc(m.title) + '"><div class="sheet-h"><span class="si">' + m.icon + '</span><div><h2>' + esc(m.title) + '</h2><p>' + esc(m.sub) + ' • ' + esc(m.pages || '') + '</p></div><button class="iconbtn x" aria-label="إغلاق">✕</button></div>' +
+      (id !== 'final' ? masteryHTML(id) : '') + (s === 'locked' ? '<p class="note">🔒 يفضل تخلص الأول: ' + esc(missing) + '. القفل للترتيب بس؛ تقدر تدخل لو حابب.</p>' : '') +
+      '<div class="row"><button class="btn">' + (s === 'done' ? '↻ العب تاني' : pos > 0 ? '▶ كمّل' : s === 'locked' ? 'ادخل برضه' : '▶ ابدأ') + '</button><button class="btn ghost small" data-deep>🔬 تعمّق</button></div></div>');
+    $('.x', sh).onclick = () => { V.sel = null; rMap(); };
+    $('.btn', sh).onclick = () => go({ name: 'mission', id, i: s === 'done' ? 0 : Math.min(pos, scenesOf(id).length - 1) });
+    $('[data-deep]', sh).onclick = () => overlay('🔬 ' + m.title, m.deep);
+    view.appendChild(sh);
+  }
+}
+
+/* ───── mission player ───── */
+function rMission() {
+  const list = scenesOf(V.id);
+  V.i = Math.max(0, Math.min(V.i, list.length - 1));
+  S.pos[V.id] = V.i; save();
+  const st = shell('mission');
+  st.appendChild(el('<section class="view"><div class="scene-wrap"><div class="scene anim-in" id="scene" role="region" aria-roledescription="مشهد"></div></div></section>'));
+  const sc = list[V.i], key = V.id + ':' + V.i, m = MIS[V.id];
+  const bar = $('#scenebar');
+  bar.innerHTML = '<button class="btn ghost small" id="b-prev" ' + (V.i === 0 ? 'disabled' : '') + '>→ السابق</button>' +
+    (sc.why ? '<button class="btn ghost small" id="b-why">❓ ليه؟</button>' : '') + (m.deep ? '<button class="btn ghost small" id="b-deep">🔬 تعمّق</button>' : '') +
+    '<span class="sp"></span><button class="btn" id="b-next" disabled>' + (V.i === list.length - 1 ? 'للخريطة' : 'التالي ←') + '</button>';
+  $('#b-prev').onclick = () => go({ name: 'mission', id: V.id, i: V.i - 1 });
+  $('#b-next').onclick = next;
+  if (sc.why) $('#b-why').onclick = () => overlay('❓ ليه؟', sc.why, true);
+  if (m.deep) $('#b-deep').onclick = () => overlay('🔬 ' + m.title, m.deep);
+  const box = $('#scene');
+  RENDER[sc.t](sc, box, key, m);
+  const h = $('h1, h2, .q', box); if (h) { h.setAttribute('tabindex', '-1'); h.focus({ preventScroll: true }); }
+}
+function ready(pulse) { const n = $('#b-next'); if (!n) return; n.disabled = false; if (pulse !== false) n.classList.add('pulse'); }
+function next() { const list = scenesOf(V.id); if (V.i >= list.length - 1) { go({ name: 'map', sel: currentMission() || V.id }); return; } go({ name: 'mission', id: V.id, i: V.i + 1 }); }
+function head(sc, m, k, kc) { return '<div class="big-ico" aria-hidden="true">' + (sc.icon || m.icon) + '</div>' + (k ? '<span class="kicker ' + (kc || '') + '">' + k + '</span>' : ''); }
+
+function sStory(sc, box, key, m) { box.innerHTML = head(sc, m, sc.kicker || (m.icon + ' ' + m.title)) + '<h1 class="sc-title">' + F(sc.title) + '</h1><div class="body">' + F(sc.body) + '</div>'; if (sc.btn) $('#b-next').textContent = sc.btn + ' ←'; ready(); }
+function sReveal(sc, box, key, m) { box.innerHTML = head(sc, m, '✨ ' + (sc.badge || 'معلومة')) + '<h1 class="sc-title">' + F(sc.title) + '</h1><div class="body">' + F(sc.body) + '</div>'; ready(); }
+
+const TAGS = { predict: ['🔮 توقّع', 'predict'], concept: ['🧠 فكرة', ''], trap: ['⚠️ فخ بيولوجي', 'trap'], recall: ['🔁 استرجاع', 'recall'] };
+function sMCQ(sc, box, key, m) {
+  const tg = TAGS[sc.tag] || TAGS.concept;
+  box.innerHTML = head(sc, m, tg[0], tg[1]) + '<h1 class="q">' + F(sc.q) + '</h1>' + (sc.dg ? '<div class="dgbox">' + BIO.svgFor(sc.dg, sc.dg.state, hlSpot(sc.dg)) + '</div>' : '') + '<div class="mc" style="width:100%;display:grid;justify-items:center;gap:12px"></div>';
+  const done = isDone(key);
+  mountMCQ($('.mc', box), sc, { mode: 'learn', done, onDone(r) { finish(key, 'mcq', r); ready(); } });
+  if (done) ready(false);
+}
+function hlSpot(dg) { return dg.hl ? B => { const p = B.pos(dg.hl); return '<g class="hs cur pulse"><circle class="ring" cx="' + p.x + '" cy="' + p.y + '" r="' + p.r + '"/></g>'; } : null; }
+
+function mountMCQ(wrap, q, o) {
+  wrap.innerHTML = '<div class="opts" role="group"></div><div class="fbw" aria-live="polite" style="width:100%;display:grid;justify-items:center"></div>';
+  const opts = $('.opts', wrap), fbw = $('.fbw', wrap);
+  if (q.o.some(t => String(t).includes('<svg'))) opts.classList.add('gopts');
+  let wrong = 0, finished = false;
+  q.o.forEach((t, i) => {
+    const b = el('<button class="opt" data-k="' + (i + 1) + '"><span class="k">' + AR_KEYS[i] + '</span><span class="ot">' + F(t) + '</span></button>');
+    b.onclick = () => pick(i, b); opts.appendChild(b);
+  });
+  const panel = (bad, ifTxt) => '<div class="fb ' + (bad ? 'bad' : 'ok') + ' anim-in"><div class="fb-h">' + (bad ? '❌ إجابة غلط' : '✅ صح!') + '</div>' +
+    (ifTxt ? '<div class="fb-row"><span>🔍 إجابتك</span><div>' + F(ifTxt) + '</div></div>' : '') +
+    (q.idea ? '<div class="fb-row"><span>🧠 الفكرة</span><div>' + F(q.idea) + '</div></div>' : '') +
+    (q.trap ? '<div class="fb-row"><span>⚠️ الفخ</span><div>' + F(q.trap) + '</div></div>' : '') +
+    (q.clue ? '<div class="fb-row"><span>🎯 مفتاح الامتحان</span><div>' + F(q.clue) + '</div></div>' : '') +
+    (q.src ? '<div class="note">📘 ' + esc(q.src) + '</div>' : '') + '</div>';
+  function solve(r) { finished = true; $$('.opt', opts).forEach(b => b.disabled = true); $$('.opt', opts)[q.a].classList.add('is-right'); if (o.onDone) o.onDone(r); }
+  function pick(i, b) {
+    if (finished) return;
+    if (i === q.a) { fbw.innerHTML = panel(false); solve(wrong === 0 ? 1 : Math.max(.4, 1 - .3 * wrong)); announce('صح'); return; }
+    wrong++; b.classList.add('is-wrong', 'shake'); b.disabled = true;
+    const hint = (q.h && q.h[i]) || '';
+    if (o.mode === 'exam') { fbw.innerHTML = panel(true, hint ? 'كانت هتبقى صح لو… ' + hint : 'الاختيار ده مش المطلوب.'); solve(0); announce('إجابة غلط'); return; }
+    fbw.innerHTML = '<div class="fb bad anim-in"><div class="fb-h">❌ مش بالظبط.</div>' + (hint ? '<div class="fb-row"><span>🔍 كانت هتبقى صح لو</span><div>' + F(hint) + '</div></div>' : '<div class="fb-row"><span>🔍 فكّر تاني</span><div>الاختيار ده مش اللي السؤال بيسأل عنه.</div></div>') +
+      (q.clue ? '<div class="fb-row"><span>🎯 الدليل</span><div>' + F(q.clue) + '</div></div>' : '') + '<div>حاول تاني 💪 ' + (wrong >= 2 ? '<button class="linkbtn" data-reveal>اكشف الإجابة</button>' : '') + '</div></div>';
+    const rv = $('[data-reveal]', fbw); if (rv) rv.onclick = () => { fbw.innerHTML = panel(false); solve(.2); };
+    announce('مش بالظبط، حاول تاني');
+  }
+  if (o.done) { fbw.innerHTML = panel(false); finished = true; $$('.opt', opts).forEach(b => b.disabled = true); $$('.opt', opts)[q.a].classList.add('is-right'); }
+}
+
+/* ── diagram scenes ── */
+function spotsSVG(B, spots, opt) {
+  return spots.map((s, i) => {
+    const p = B.pos(s);
+    const cls = 'hs' + (opt.pulse ? ' pulse' : '') + (p.rect ? ' rect' : '');
+    const lab = opt.numbers ? (i + 1) : '';
+    const aria = opt.aria ? opt.aria(s, i) : 'نقطة ' + (i + 1);
+    if (p.rect) return '<g class="' + cls + '" data-i="' + i + '" tabindex="0" role="button" aria-label="' + esc(aria) + '"><rect class="ring" x="' + p.rect[0] + '" y="' + p.rect[1] + '" width="' + p.rect[2] + '" height="' + p.rect[3] + '" rx="8"/>' + (lab ? '<text class="num" x="' + (p.rect[0] + p.rect[2] / 2) + '" y="' + (p.rect[1] + p.rect[3] / 2) + '">' + lab + '</text>' : '') + '</g>';
+    const r = p.r, dot = Math.max(r * .32, 2.5);
+    return '<g class="' + cls + '" data-i="' + i + '" tabindex="0" role="button" aria-label="' + esc(aria) + '"><circle class="ring" cx="' + p.x + '" cy="' + p.y + '" r="' + r + '"/>' + (lab ? '<circle cx="' + p.x + '" cy="' + p.y + '" r="' + r * .62 + '" fill="#6fc3e6"/><text class="num" x="' + p.x + '" y="' + p.y + '" style="font-size:' + Math.max(r * .8, 9) + 'px">' + lab + '</text>' : '<circle class="dot" cx="' + p.x + '" cy="' + p.y + '" r="' + dot + '"/>') + '</g>';
+  }).join('');
+}
+function bindSpots(root, fn) { $$('.hs', root).forEach(g => { const i = +g.dataset.i; g.addEventListener('click', () => fn(i, g)); g.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fn(i, g); } }); }); }
+function dgBox(sc, spotsHtml, state) { const tall = BIO.IMG[sc.dg.base] ? ' tall' : ''; return '<div class="dgbox' + tall + '">' + BIO.svgFor(sc.dg, state || sc.dg.state, spotsHtml) + '</div>'; }
+
+function sExplore(sc, box, key, m) {
+  const done = isDone(key), seen = new Set(), need = sc.need == null ? sc.spots.length : sc.need;
+  box.innerHTML = head(sc, m, '🔍 استكشاف') + '<h1 class="q">' + F(sc.q) + '</h1><div class="dsplit"><div>' + dgBox(sc, B => spotsSVG(B, sc.spots, { pulse: true })) + '</div><div class="side">' +
+    (sc.note ? '<div class="dg-note">' + F(sc.note) + '</div>' : '') + (sc.spots.length ? '<div class="spot-card" aria-live="polite"><span class="muted">👆 اضغط على أي نقطة</span></div><div class="prog"></div>' : '') + '</div></div>';
+  const prog = () => { const p = $('.prog', box); if (p) p.textContent = 'اكتشفت ' + seen.size + ' من ' + sc.spots.length + (seen.size < need ? ' • محتاج ' + need + ' عشان تكمّل' : ' ✓'); };
+  bindSpots(box, (i, g) => {
+    const s = sc.spots[i]; seen.add(i); g.classList.add('seen'); g.classList.remove('pulse');
+    $$('.hs', box).forEach(x => x.classList.remove('cur')); g.classList.add('cur');
+    $('.spot-card', box).innerHTML = '<h3>' + F(s.t) + '</h3><div>' + F(s.d) + '</div>'; prog();
+    if (seen.size >= need && !isDone(key)) { finish(key, 'explore', 1); ready(); }
+  });
+  prog();
+  if (done || need === 0) { if (need === 0) finish(key, 'explore', 1, 5); ready(false); }
+}
+
+function sFind(sc, box, key, m) {
+  const done = isDone(key); let qi = 0, miss = 0;
+  const ask = sc.ask.map(id => sc.spots.findIndex(s => s.id === id));
+  box.innerHTML = head(sc, m, '🎯 دوّر عليها') + '<div class="dsplit"><div>' + dgBox(sc, B => spotsSVG(B, sc.spots, { aria: (s, i) => 'منطقة ' + (i + 1) })) + '</div><div class="side"><div class="ask" aria-live="polite"></div><div class="spot-card" aria-live="polite"><span class="muted">' + F(sc.q) + '</span></div><div class="prog"></div></div></div>';
+  const setAsk = () => { $('.ask', box).innerHTML = qi < ask.length ? 'اضغط على: <b>' + F(sc.spots[ask[qi]].t) + '</b>' : '🏁 لقيتهم كلهم!'; $('.prog', box).textContent = Math.min(qi, ask.length) + ' من ' + ask.length; };
+  if (done) { qi = ask.length; ask.forEach(i => $$('.hs', box)[i].classList.add('right')); setAsk(); ready(false); return; }
+  bindSpots(box, (i, g) => {
+    if (qi >= ask.length) return;
+    const card = $('.spot-card', box), s = sc.spots[i];
+    if (i === ask[qi]) {
+      g.classList.add('right'); card.innerHTML = '<h3>✅ ' + F(s.t) + '</h3><div>' + F(s.d) + '</div>'; qi++; setAsk(); announce('صح');
+      if (qi === ask.length) { finish(key, 'find', Math.max(.4, 1 - .12 * miss)); ready(); }
+    } else {
+      miss++; g.classList.add('wrong', 'shake'); setTimeout(() => g.classList.remove('wrong', 'shake'), 700);
+      card.innerHTML = '<h3 style="color:var(--bad)">❌ دي ' + F(s.t) + '</h3><div>' + F(s.d) + '</div>'; announce('دي ' + s.t);
+    }
+  });
+  setAsk();
+}
+
+function sLabel(sc, box, key, m) {
+  const done = isDone(key), names = shuffle(sc.marks.map(x => x.a));
+  box.innerHTML = head(sc, m, '🏷️ سمّي الأجزاء') + '<h1 class="q">' + F(sc.q) + '</h1>' + dgBox(sc, B => spotsSVG(B, sc.marks, { numbers: true, aria: (s, i) => 'رقم ' + (i + 1) })) +
+    '<div class="labels">' + sc.marks.map((mk, i) => '<div class="lrow"><span class="ln">' + (i + 1) + '</span><select id="lb-' + key.replace(':', '-') + '-' + i + '" aria-label="اسم الجزء رقم ' + (i + 1) + '"><option value="">اختار…</option>' + names.map(n => '<option>' + esc(n) + '</option>').join('') + '</select></div>').join('') + '</div><button class="btn" id="lb-c">تحقق</button><div class="lfb" aria-live="polite"></div>';
+  let tries = 0;
+  const check = () => {
+    tries++; let wrong = 0;
+    $$('.lrow', box).forEach((r, i) => { const ok = $('select', r).value === sc.marks[i].a; r.classList.toggle('ok', ok); r.classList.toggle('no', !ok); if (!ok) wrong++; });
+    if (!wrong) { $('#lb-c', box).remove(); $$('select', box).forEach(s => s.disabled = true); $('.lfb', box).innerHTML = '<div class="fb ok anim-in"><div class="fb-h">✅ كل الأسماء صح</div></div>'; finish(key, 'label', tries === 1 ? 1 : Math.max(.4, 1 - .2 * (tries - 1))); ready(); }
+    else $('.lfb', box).innerHTML = '<div class="fb bad"><div>❌ ' + wrong + ' محتاجين مراجعة. اضغط على الأرقام في الرسم ما بتفرقش؛ ارجع لمشهد الاستكشاف لو محتاج (زر السابق).</div>' + (tries >= 2 ? '<button class="linkbtn" id="lb-show">اكشف الإجابات</button>' : '') + '</div>';
+    const sh = $('#lb-show', box); if (sh) sh.onclick = () => { $$('.lrow', box).forEach((r, i) => { $('select', r).value = sc.marks[i].a; }); check(); };
+  };
+  $('#lb-c', box).onclick = check;
+  if (done) { $$('.lrow', box).forEach((r, i) => { $('select', r).value = sc.marks[i].a; r.classList.add('ok'); $('select', r).disabled = true; }); $('#lb-c', box).remove(); ready(false); }
+}
+
+function sToggle(sc, box, key, m) {
+  const seen = new Set(); let cur = 0;
+  box.innerHTML = head(sc, m, '🔄 قارن') + '<h1 class="q">' + F(sc.q) + '</h1><div class="tabs" role="tablist"></div><div class="tw" style="width:100%;display:grid;justify-items:center"></div><div class="body">' + F(sc.note || '') + '</div>';
+  const draw = () => {
+    seen.add(cur);
+    const t = $('.tabs', box); t.innerHTML = '';
+    sc.states.forEach((s, i) => { const b = el('<button class="tok" role="tab" aria-selected="' + (i === cur) + '">' + (seen.has(i) ? '✓ ' : '') + esc(s.k) + '</button>'); b.onclick = () => { cur = i; draw(); }; t.appendChild(b); });
+    $('.tw', box).innerHTML = '<div class="dgbox zoomer">' + BIO.svgFor(sc.dg, sc.states[cur].s) + '</div>';
+    if (seen.size === sc.states.length) { finish(key, 'toggle', 1); ready(); }
+  };
+  draw();
+  if (isDone(key)) ready(false);
+}
+
+function sJourney(sc, box, key, m) {
+  const done = isDone(key); let k = 1, miss = 0;
+  const nm = n => n.split(' ').slice(1).join(' ');
+  box.innerHTML = head(sc, m, '🧭 رحلة') + '<h1 class="sc-title">' + F(sc.title) + '</h1><p class="q" style="font-weight:500">' + F(sc.q) + '</p><div class="journey"></div><div class="jopts row"></div><div class="jfb" aria-live="polite"></div>';
+  const J = $('.journey', box);
+  const add = st => { if (J.children.length) J.appendChild(el('<div class="jline"></div>')); J.appendChild(el('<div class="jnode anim-in"><b>' + F(st.n) + '</b><span>' + F(st.d) + '</span></div>')); };
+  const stepUI = () => {
+    const O = $('.jopts', box); O.innerHTML = '';
+    if (k >= sc.steps.length) { $('.jfb', box).innerHTML = '<div class="fb ok anim-in"><div class="fb-h">🏁 وصلت للحركة!</div></div>'; finish(key, 'journey', Math.max(.4, 1 - .1 * miss)); ready(); return; }
+    const st = sc.steps[k];
+    shuffle(st.o).forEach(o => { const b = el('<button class="tok">' + F(o) + '</button>'); b.onclick = () => { if (o === nm(st.n)) { add(st); k++; $('.jfb', box).innerHTML = ''; stepUI(); } else { miss++; b.classList.add('shake'); b.disabled = true; $('.jfb', box).innerHTML = '<div class="fb bad"><div>❌ لسه بدري على «' + esc(o) + '». إيه اللي بييجي بعد «' + F(nm(sc.steps[k - 1].n)) + '» مباشرة؟</div></div>'; } }; O.appendChild(b); });
+  };
+  add(sc.steps[0]);
+  if (done) { sc.steps.slice(1).forEach(add); ready(false); return; }
+  stepUI();
+}
+
+function sCalc(sc, box, key, m) {
+  const done = isDone(key);
+  box.innerHTML = head(sc, m, '🧮 مسألة') + '<h1 class="q">' + F(sc.q) + '</h1><div class="given">' + sc.given.map(g => '<span>' + F(g) + '</span>').join('') + '</div><div class="panel" id="cw" style="display:grid;gap:12px;justify-items:center"></div>';
+  const cw = $('#cw', box); let step = 0, slips = 0;
+  const fieldsUI = () => {
+    const w = el('<div style="display:grid;gap:10px;justify-items:center;width:100%"><div class="fields">' + sc.fields.map((f, i) => '<label class="field" for="cf-' + key.replace(':', '-') + '-' + i + '"><span>' + F(f.l) + '</span><input class="num-in" id="cf-' + key.replace(':', '-') + '-' + i + '" inputmode="numeric" autocomplete="off"></label>').join('') + '</div><button class="btn small">تحقق</button><div class="cfb" aria-live="polite" style="width:100%;display:grid;justify-items:center"></div></div>');
+    cw.appendChild(w);
+    const ins = $$('input', w); ins[0].focus();
+    const check = () => {
+      let bad = 0;
+      ins.forEach((inp, i) => { const v = Number(inp.value.replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/[,\s،]/g, '')); const ok = inp.value.trim() !== '' && v === sc.fields[i].a; inp.classList.toggle('ok', ok); inp.classList.toggle('no', !ok); if (!ok) bad++; });
+      if (!bad) { ins.forEach(i => i.disabled = true); $('button', w).remove(); $('.cfb', w).innerHTML = '<div class="fb ok anim-in"><div class="fb-h">✅ مظبوط</div><div>' + F(sc.idea) + '</div></div>'; finish(key, 'calc', slips ? .7 : 1); ready(); }
+      else { slips++; $('.cfb', w).innerHTML = '<div class="fb bad"><div>❌ ' + bad + ' خانة محتاجة مراجعة. ارجع للمعطيات فوق.</div>' + (slips >= 2 ? '<button class="linkbtn" data-sh>اكشف الحل</button>' : '') + '</div>'; const sh = $('[data-sh]', w); if (sh) sh.onclick = () => { ins.forEach((inp, i) => inp.value = sc.fields[i].a); check(); }; }
+    };
+    $('button', w).onclick = check;
+    ins.forEach(inp => inp.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); check(); } });
+  };
+  const run = () => {
+    if (step < sc.steps.length) {
+      const st = sc.steps[step];
+      const w = el('<div style="display:grid;gap:10px;justify-items:center;width:100%"><div style="font-weight:700">خطوة ' + (step + 1) + ': ' + F(st.q) + '</div><div class="mcw" style="width:100%;display:grid;justify-items:center"></div></div>');
+      cw.appendChild(w);
+      mountMCQ($('.mcw', w), st, { mode: 'learn', onDone(r) { if (r < 1) slips++; step++; setTimeout(run, 250); } });
+    } else fieldsUI();
+  };
+  if (done) { cw.innerHTML = '<div class="fb ok"><div class="fb-h">✅ ' + sc.fields.map(f => F(f.l) + ' = <b>' + f.a.toLocaleString('en') + '</b>').join(' • ') + '</div><div>' + F(sc.idea) + '</div></div>'; ready(false); }
+  else run();
+}
+
+function sOrder(sc, box, key, m) {
+  const done = isDone(key);
+  box.innerHTML = head(sc, m, '🔀 رتّب') + '<h1 class="q">' + F(sc.q) + '</h1><div class="order-slots"></div><div class="pool"></div><div class="ofb" aria-live="polite"></div>';
+  const slots = $('.order-slots', box), pool = $('.pool', box), ofb = $('.ofb', box);
+  sc.items.forEach((t, i) => slots.appendChild(el('<div class="slot"><span class="sn">' + (i + 1) + '</span><span class="sv"></span></div>')));
+  let nxt = 0, mistakes = 0;
+  const fill = i => { const s = slots.children[i]; s.classList.add('filled'); $('.sv', s).innerHTML = F(sc.items[i]); };
+  const end = () => { ofb.innerHTML = '<div class="fb ok anim-in"><div class="fb-h">✅ الترتيب صح</div>' + (sc.idea ? '<div>' + F(sc.idea) + '</div>' : '') + '</div>'; };
+  if (done) { sc.items.forEach((t, i) => fill(i)); end(); ready(false); return; }
+  let ord = shuffle(sc.items.map((t, i) => i)); if (ord.every((v, i) => v === i)) ord.reverse();
+  ord.forEach(i => {
+    const b = el('<button class="tok">' + F(sc.items[i]) + '</button>');
+    b.onclick = () => {
+      if (i === nxt) { fill(i); b.disabled = true; nxt++; ofb.innerHTML = ''; if (nxt === sc.items.length) { end(); finish(key, 'order', Math.max(.4, 1 - .15 * mistakes)); ready(); } }
+      else { mistakes++; b.classList.add('shake'); setTimeout(() => b.classList.remove('shake'), 400); ofb.innerHTML = '<div class="fb bad"><div>❌ مش دي اللي عليها الدور. إيه اللي لازم يحصل <b>قبلها</b>؟</div></div>'; }
+    };
+    pool.appendChild(b);
+  });
+}
+function sMatch(sc, box, key, m) {
+  const done = isDone(key);
+  box.innerHTML = head(sc, m, '🔗 توصيل') + '<h1 class="q">' + F(sc.q) + '</h1><div class="match"><div class="col L"></div><div class="col R"></div></div><div class="mfb" aria-live="polite"></div>';
+  const L = $('.L', box), R = $('.R', box), mfb = $('.mfb', box);
+  let sel = null, matched = 0, mistakes = 0;
+  const lb = sc.pairs.map((p, i) => { const b = el('<button class="tok" aria-pressed="false" data-i="' + i + '">' + F(p[0]) + '</button>'); L.appendChild(b); return b; });
+  const rb = {};
+  shuffle(sc.pairs.map((p, i) => i)).forEach(i => { const b = el('<button class="tok" data-i="' + i + '">' + F(sc.pairs[i][1]) + '</button>'); R.appendChild(b); rb[i] = b; });
+  const lock = i => { lb[i].classList.add('m' + (i % 6)); rb[i].classList.add('m' + (i % 6)); lb[i].disabled = rb[i].disabled = true; lb[i].setAttribute('aria-pressed', 'false'); };
+  const end = () => { mfb.innerHTML = '<div class="fb ok anim-in"><div class="fb-h">✅ كله متوصّل</div>' + (sc.idea ? '<div>' + F(sc.idea) + '</div>' : '') + '</div>'; };
+  if (done) { sc.pairs.forEach((p, i) => lock(i)); end(); ready(false); return; }
+  lb.forEach(b => b.onclick = () => { lb.forEach(x => x.setAttribute('aria-pressed', 'false')); sel = +b.dataset.i; b.setAttribute('aria-pressed', 'true'); });
+  Object.values(rb).forEach(b => b.onclick = () => {
+    if (sel == null) { mfb.innerHTML = '<div class="note">اختار من العمود الأول الأول.</div>'; return; }
+    const i = +b.dataset.i;
+    if (i === sel) { lock(i); matched++; sel = null; mfb.innerHTML = ''; if (matched === sc.pairs.length) { end(); finish(key, 'match', Math.max(.4, 1 - .12 * mistakes)); ready(); } }
+    else { mistakes++; b.classList.add('shake'); setTimeout(() => b.classList.remove('shake'), 400); mfb.innerHTML = '<div class="fb bad"><div>❌ مش الزوج ده. جرّب تاني.</div></div>'; }
+  });
+}
+function sSort(sc, box, key, m) {
+  const done = isDone(key);
+  box.innerHTML = head(sc, m, '🗂️ تصنيف') + '<h1 class="q">' + F(sc.q) + '</h1><div class="pool"></div><div class="bins"></div><div class="sfb" aria-live="polite"></div>';
+  const pool = $('.pool', box), bins = $('.bins', box), sfb = $('.sfb', box);
+  const binEls = sc.bins.map(b => { const d = el('<div class="bin"><button class="bh">' + F(b) + '</button><div class="in"></div></div>'); bins.appendChild(d); return d; });
+  let sel = null, placed = 0, mistakes = 0;
+  const put = i => $('.in', binEls[sc.items[i][1]]).appendChild(el('<span>' + F(sc.items[i][0]) + '</span>'));
+  const end = () => { sfb.innerHTML = '<div class="fb ok anim-in"><div class="fb-h">✅ تصنيف ممتاز</div>' + (sc.idea ? '<div>' + F(sc.idea) + '</div>' : '') + '</div>'; };
+  if (done) { sc.items.forEach((it, i) => put(i)); end(); ready(false); return; }
+  const toks = shuffle(sc.items.map((t, i) => i)).map(i => { const b = el('<button class="tok" aria-pressed="false" data-i="' + i + '">' + F(sc.items[i][0]) + '</button>'); pool.appendChild(b); return b; });
+  toks.forEach(b => b.onclick = () => { toks.forEach(x => x.setAttribute('aria-pressed', 'false')); sel = b; b.setAttribute('aria-pressed', 'true'); binEls.forEach(x => x.classList.add('target')); });
+  binEls.forEach((d, bi) => $('.bh', d).onclick = () => {
+    if (!sel) { sfb.innerHTML = '<div class="note">اختار كارت الأول، وبعدين اضغط على المجموعة.</div>'; return; }
+    const i = +sel.dataset.i;
+    if (sc.items[i][1] === bi) { put(i); sel.remove(); sel = null; placed++; sfb.innerHTML = ''; binEls.forEach(x => x.classList.remove('target')); if (placed === sc.items.length) { end(); finish(key, 'sort', Math.max(.4, 1 - .1 * mistakes)); ready(); } }
+    else { mistakes++; d.classList.add('shake'); setTimeout(() => d.classList.remove('shake'), 400); sfb.innerHTML = '<div class="fb bad"><div>❌ مش هنا. فكّر في التعريف تاني.</div></div>'; }
+  });
+}
+function sFlip(sc, box, key, m) {
+  const done = isDone(key);
+  box.innerHTML = head(sc, m, '🃏 اكتشف') + '<h1 class="q">' + F(sc.q) + '</h1><div class="flips"></div>';
+  let opened = 0;
+  sc.cards.forEach(c => {
+    const b = el('<button class="flip" aria-pressed="false">' + F(c.front) + '</button>');
+    b.onclick = () => { if (b.classList.contains('open')) return; b.classList.add('open', 'anim-in'); b.setAttribute('aria-pressed', 'true'); b.innerHTML = F(c.front) + '<div>' + F(c.back) + '</div>'; opened++; if (opened === sc.cards.length) { finish(key, 'flip', 1); ready(); } };
+    if (done) { b.classList.add('open'); b.innerHTML = F(c.front) + '<div>' + F(c.back) + '</div>'; }
+    $('.flips', box).appendChild(b);
+  });
+  if (done) ready(false);
+}
+function sTeach(sc, box, key, m) {
+  const done = isDone(key), id = 'teach-' + key.replace(':', '-');
+  box.innerHTML = head(sc, m, '🎤 اشرحها بنفسك') + '<h1 class="q">' + F(sc.prompt) + '</h1><label class="sr" for="' + id + '">إجابتك</label><textarea class="teach" id="' + id + '" placeholder="اكتب بأسلوبك… مش لازم تبقى مثالية"></textarea><div class="row"><button class="btn ghost" id="t-rev">👀 اكشف الشرح النموذجي</button></div><div class="tm" style="width:100%;display:grid;justify-items:center"></div>';
+  const ta = $('textarea', box); ta.value = S.notes[key] || ''; ta.oninput = () => { S.notes[key] = ta.value; save(); };
+  const show = () => { $('.tm', box).innerHTML = '<div class="model anim-in"><b>📘 شرح نموذجي</b><br>' + F(sc.model) + '<div class="note" style="margin-top:6px">قارن: إيه اللي كتبته؟ إيه اللي نسيته؟</div></div>'; const r = $('#t-rev', box); if (r) r.remove(); };
+  $('#t-rev', box).onclick = () => { const wrote = ta.value.trim().length >= 15; show(); if (finish(key, 'teach', wrote ? 1 : .5, wrote ? XP.teach : 0) && !wrote) toast('اكتب محاولتك المرة الجاية عشان تاخد XP'); ready(); };
+  if (done) { show(); ready(false); }
+}
+function sCheckpoint(sc, box, key, m) {
+  box.innerHTML = '<div class="big-ico">☕</div><span class="kicker recall">نقطة استراحة</span><h1 class="sc-title">اتعلمت كتير</h1><p class="body">قبل ما تكمّل: إيه أهم <b>3 حاجات</b> فاكرهم دلوقتي؟ (من غير ما ترجع تبص)</p><div class="cp-inputs"></div><p class="muted">قوم اتمطّع شوية… عمودك الفقري هيشكرك 🐍</p>';
+  const w = $('.cp-inputs', box), vals = (S.notes[key] || '||').split('|');
+  [0, 1, 2].forEach(i => {
+    const inp = el('<input type="text" id="cp-' + key.replace(':', '-') + '-' + i + '" aria-label="الحاجة رقم ' + (i + 1) + '" placeholder="' + (i + 1) + '.">');
+    inp.value = vals[i] || '';
+    inp.oninput = () => { const a = $$('input', w).map(x => x.value.replace(/\|/g, '/')); S.notes[key] = a.join('|'); save(); if (a.filter(x => x.trim().length > 3).length >= 2) finish(key, 'checkpoint', 1); };
+    w.appendChild(inp);
+  });
+  ready(false);
+}
+function sBoss(sc, box, key, m) {
+  let qi = 0, total = 0, hits = 0;
+  const frame = () => { box.innerHTML = '<div class="boss-h"><span class="kicker trap">⚔️ ' + (sc.final ? 'الزعيم النهائي' : 'معركة زعيم') + '</span><div class="boss-ico" aria-hidden="true">' + sc.icon + '</div><h1 class="sc-title">' + F(sc.name) + '</h1><div class="hp" aria-label="طاقة الزعيم">' + sc.qs.map((q, i) => '<i class="' + (i < qi ? 'gone' : '') + '"></i>').join('') + '</div></div><div class="bw" style="width:100%;display:grid;justify-items:center;gap:12px"></div>'; };
+  const intro = () => { frame(); $('.bw', box).innerHTML = '<p class="body">' + F(sc.intro) + '</p><p class="muted">' + sc.qs.length + ' ضربات. الغلط مش بيخسرك؛ بيعلمك.</p><button class="btn pulse" id="bs">⚔️ ابدأ المعركة</button>'; $('#bs').onclick = () => { qi = 0; ask(); }; $('#bs').focus(); };
+  const ask = () => {
+    frame(); const q = sc.qs[qi], bw = $('.bw', box);
+    bw.innerHTML = '<span class="step-chip">' + (q.label ? esc(q.label) : 'الضربة ' + (qi + 1) + ' من ' + sc.qs.length) + '</span><h2 class="q">' + F(q.q) + '</h2><div class="mcw" style="width:100%;display:grid;justify-items:center"></div>';
+    $('.q', bw).setAttribute('tabindex', '-1'); $('.q', bw).focus({ preventScroll: true });
+    mountMCQ($('.mcw', bw), q, { mode: 'learn', onDone(r) {
+      total++; hits += r; $('.boss-ico', box).classList.add('hit'); const hp = $$('.hp i', box)[qi]; if (hp) hp.classList.add('gone'); qi++;
+      const nb = el('<button class="btn" style="margin-top:6px">' + (qi < sc.qs.length ? '💥 الضربة الجاية ←' : '🏁 اقضي عليه') + '</button>');
+      nb.onclick = () => qi < sc.qs.length ? ask() : win(true); bw.appendChild(nb); nb.focus({ preventScroll: true });
+    } });
+  };
+  const win = fr => {
+    frame(); $$('.hp i', box).forEach(i => i.classList.add('gone')); $('.boss-ico', box).textContent = '💥';
+    $('.bw', box).innerHTML = '<h2 class="sc-title" style="color:var(--gold)">🏆 انتصار!</h2><p class="body">هزمت <b>' + F(sc.name) + '</b>.' + (fr ? ' دقة الضربات: ' + Math.round(100 * hits / Math.max(1, total)) + '%' : '') + '</p><button class="btn ghost small" id="br">↻ قاتله تاني</button>';
+    $('#br').onclick = () => { qi = 0; hits = 0; total = 0; ask(); };
+    if (fr) finish(key, 'boss', hits / Math.max(1, total)); ready();
+  };
+  if (isDone(key)) win(false); else intro();
+}
+function sComplete(sc, box, key, m) {
+  S.done[m.id] = true; save();
+  const nx = currentMission();
+  box.innerHTML = '<div class="big-ico">🎬</div><span class="kicker recall">MISSION COMPLETE</span><h1 class="sc-title">' + m.icon + ' ' + esc(m.title) + '</h1><p class="body">دلوقتي إنت فاهم:</p><div class="chips">' + m.concepts.map(c => '<span class="chip">' + F(c) + '</span>').join('') + '</div><div class="panel">' + masteryHTML(m.id) + '</div>' +
+    '<p class="body">🧍 جزء جديد من الجسم نوّر على الخريطة.</p>' + (nx ? '<p class="body">الجاي: <b>' + MIS[nx].icon + ' ' + esc(MIS[nx].title) + '</b></p>' : '') +
+    '<div class="row">' + (nx ? '<button class="btn pulse" id="c-next">ادخل المهمة الجاية ←</button>' : '') + '<button class="btn ghost small" id="c-exam">🎯 امتحن نفسك في المهمة دي</button></div>';
+  if (nx) $('#c-next').onclick = () => go({ name: 'mission', id: nx, i: S.pos[nx] || 0 });
+  $('#c-exam').onclick = () => { EX = null; go({ name: 'exam', filter: m.id }); };
+  ready(false);
+}
+function sFinale(sc, box, key, m) {
+  S.done.final = true; save();
+  box.innerHTML = '<div class="big-ico">🏆</div><span class="kicker">سيد الحركة</span><h1 class="sc-title">خلّصت عالم الحركة</h1><p class="body">من 206 عظمة… لـ 33 فقرة… لمفصل وأربطة… لحد خيط أكتين بيتسحب بـ ATP.<br>دلوقتي شوف الجسم كله مرة واحدة:</p><div class="row"><button class="btn pulse" id="f-model">🌌 الصورة الكاملة</button><button class="btn ghost small" id="f-exam">🎯 ساحة الامتحان</button></div>';
+  $('#f-model').onclick = () => go({ name: 'model' }); $('#f-exam').onclick = () => go({ name: 'exam' });
+  ready(false);
+}
+
+/* ───── labs ───── */
+function sLab(sc, box, key, m) { LABS[sc.lab](sc, box, key, m); }
+function labHead(sc, m, k) { return head(sc, m, '🔬 ' + (k || 'معمل'), 'lab') + '<h1 class="sc-title">' + F(sc.title) + '</h1>'; }
+
+function labZoom(sc, box, key, m) {
+  const L = [
+    { b: 'zWhole', n: 'العضلة', d: 'مجموعة من الأنسجة العضلية (اللحم)، تتصل بالعظم عن طريق <b>الوتر</b>.', q: 'لو قطعنا العضلة بالعرض… هنلاقي جواها إيه؟', o: ['حزم عضلية', 'خلايا عصبية', 'عظام صغيرة'], a: 0 },
+    { b: 'zBundle', n: 'الحزمة', d: 'الألياف العضلية توجد دائماً في مجموعات تعرف بـ<b>الحزم العضلية</b>، يحيط بها غشاء يعرف بغشاء الحزمة (نسيج ضام).', q: 'كل حزمة متكونة من إيه؟', o: ['ألياف (خلايا) عضلية', 'أوتار', 'ساركومير مباشرة'], a: 0 },
+    { b: 'zFiber', n: 'الليفة (الخلية)', d: 'ساركوبلازم + عدد كبير من الأنوية، يحيط بها غشاء الساركوليما، وبها مجموعة من الليفيات يتراوح عددها بين <b>1000 – 2000</b> مرتبة طولياً وموازية للمحور الطولي للعضلة.', q: 'نعمل Zoom على ليفية واحدة… هنشوف إيه؟', o: ['أقراص داكنة ومضيئة متبادلة', 'أنوية فقط', 'أوعية دموية'], a: 0 },
+    { b: 'zFibril', n: 'الليفية العضلية', d: 'مجموعة من الأقراص المضيئة (I) والداكنة (A) يقطع منتصف المضيئة خط داكن Z.', q: 'المسافة بين خطين Z متتاليين اسمها؟', o: ['القطعة العضلية (الساركومير)', 'الحزمة', 'الساركوليما'], a: 0 },
+    { b: 'sarcomere', n: 'القطعة العضلية', d: 'بها خيوط بروتينية رفيعة (<b>أكتين</b>) وسميكة (<b>ميوسين</b>). أصغر وحدة هتشوفها في المهمة دي!' }
+  ];
+  let lv = 0; const done = isDone(key);
+  box.innerHTML = labHead(sc, m, 'Zoom') + '<div class="lvlchips"></div><div class="zw" style="width:100%;display:grid;justify-items:center;gap:10px"></div>';
+  const draw = () => {
+    $('.lvlchips', box).innerHTML = L.map((l, i) => '<span class="' + (i <= lv ? 'on' : '') + '">' + l.n + '</span>').join('<span aria-hidden="true">←</span>');
+    const l = L[lv], zw = $('.zw', box);
+    zw.innerHTML = '<div class="dgbox zoomer">' + BIO.svgFor({ base: l.b }, l.b === 'sarcomere' ? { c: 0 } : {}) + '</div><div class="spot-card"><h3>🔬 ' + l.n + '</h3><div>' + F(l.d) + '</div></div><div class="zq" style="width:100%;display:grid;justify-items:center;gap:8px"></div>';
+    if (l.q) {
+      $('.zq', zw).innerHTML = '<div style="font-weight:700">🔮 ' + l.q + '</div><div class="mcw" style="width:100%;display:grid;justify-items:center"></div>';
+      mountMCQ($('.mcw', zw), { o: l.o, a: l.a }, { mode: 'learn', onDone() { const b = el('<button class="btn">🔬 Zoom in</button>'); b.onclick = () => { lv++; draw(); }; $('.zq', zw).appendChild(b); b.focus(); } });
+    } else { finish(key, 'lab', 1); ready(); $('.zq', zw).innerHTML = '<div class="chain"><span>عضلة</span><i>←</i><span>حزم</span><i>←</i><span>ألياف</span><i>←</i><span>ليفيات</span><i>←</i><span>ساركومير</span><i>←</i><span>أكتين + ميوسين</span></div>'; }
+  };
+  if (done) lv = L.length - 1;
+  draw();
+}
+
+function labSarc(sc, box, key, m) {
+  const done = isDone(key);
+  const Q = [['A', 'المنطقة الداكنة A'], ['H', 'المنطقة شبه المضيئة H'], ['I', 'المنطقة المضيئة I'], ['S', 'طول القطعة العضلية']];
+  const ANS = { A: 'ثابت', H: 'يقل', I: 'يقل', S: 'يقل' };
+  const pick = {};
+  box.innerHTML = labHead(sc, m, 'نظرية هكسلي') + '<p class="body">قبل ما نحفّز العضلة: 🔮 توقّع اللي هيحصل أثناء <b>الانقباض</b>:</p><div class="pred-rows">' +
+    Q.map(([k, t]) => '<div class="pred-row"><span>' + t + '</span><span class="seg" role="group" aria-label="' + t + '">' + ['يقل', 'ثابت', 'يزيد'].map(v => '<button aria-pressed="false" data-k="' + k + '" data-v="' + v + '">' + v + '</button>').join('') + '</span></div>').join('') +
+    '</div><button class="btn" id="sx-go" disabled>⚡ ابعت سيال عصبي</button><div class="sw" style="width:100%;display:grid;justify-items:center;gap:10px"></div>';
+  $$('.seg button', box).forEach(b => b.onclick = () => { pick[b.dataset.k] = b.dataset.v; $$('.seg button[data-k="' + b.dataset.k + '"]', box).forEach(x => x.setAttribute('aria-pressed', String(x === b))); $('#sx-go', box).disabled = Object.keys(pick).length < 4; });
+  const slider = () => {
+    const sw = $('.sw', box);
+    sw.innerHTML = '<div class="dgbox" id="sx-dg"></div><label for="sx-r" class="muted">⚡ اسحب: من الانبساط ← للانقباض التام</label><input type="range" id="sx-r" min="0" max="100" value="0"><div class="meters"></div><div class="sx-res" style="width:100%;display:grid;justify-items:center"></div>';
+    const base = BIO.build({ base: 'sarcomere' }, { c: 0 }).meta;
+    const upd = () => {
+      const c = +$('#sx-r', sw).value / 100;
+      $('#sx-dg', sw).innerHTML = BIO.svgFor({ base: 'sarcomere', alt: 'قطعة عضلية' }, { c });
+      const M = BIO.build({ base: 'sarcomere' }, { c }).meta;
+      $('.meters', sw).innerHTML = [['A', M.A, base.A], ['H', M.H, base.H], ['I', M.I, base.I], ['الساركومير', M.S, base.S]].map(x => '<div class="meter">' + x[0] + '<b>' + Math.round(100 * x[1] / x[2]) + '%</b></div>').join('');
+      if (c >= .98 && !$('.sx-res .result', sw)) {
+        let ok = 0; const rows = Q.map(([k, t]) => { const g = pick[k] === ANS[k]; if (g) ok++; return '<div>' + (g ? '✅' : '❌') + ' ' + t + ': <b>' + ANS[k] + '</b>' + (k === 'H' ? ' (وتنعدم في الانقباض التام)' : '') + (g ? '' : ' — توقعت: ' + pick[k]) + '</div>'; }).join('');
+        $('.sx-res', sw).innerHTML = '<div class="result anim-in">' + rows + '<div>🧠 الروابط المستعرضة تمتد من <b>الميوسين</b> وتتصل بالأكتين بمساعدة $Ca^2+$ و ATP وتسحبه كالخطاطيف، فتتقارب خطوط Z. أطوال الخيوط نفسها <b>ثابتة</b>.</div><div class="note">النسب على العدادات توضيحية من الرسم، مش قياس حقيقي.</div></div>';
+        if (!isDone(key)) { finish(key, 'lab', ok / 4); ready(); }
+      }
+    };
+    $('#sx-r', sw).oninput = upd; upd(); $('#sx-r', sw).focus();
+  };
+  $('#sx-go', box).onclick = () => { $('#sx-go', box).remove(); $$('.seg button', box).forEach(b => b.disabled = true); slider(); };
+  if (done) { Q.forEach(([k]) => { pick[k] = ANS[k]; $$('.seg button[data-k="' + k + '"]', box).forEach(x => x.setAttribute('aria-pressed', String(x.dataset.v === ANS[k]))); }); $('#sx-go', box).remove(); slider(); ready(false); }
+}
+
+function labNMJ(sc, box, key, m) {
+  const P = [
+    { s: { ph: 0 }, t: '🔋 الراحة (الاستقطاب)', d: 'السطح الخارجي لغشاء الليفة موجب (+) والداخلي سالب (−) ← فرق جهد <b>−70 ملي ڤولت</b>. الصوديوم بالخارج والبوتاسيوم بالداخل.' },
+    { s: { ph: 1 }, t: '⚡ السيال العصبي وصل', d: 'السيال وصل للحويصلات في نهاية الخلية العصبية الحركية.', q: 'أول أيون هيدخل النهاية العصبية؟', o: ['الكالسيوم $Ca^2+$', 'الصوديوم $Na^+$', 'البوتاسيوم $K^+$'], a: 0 },
+    { s: { ph: 2 }, t: '🟡 دخول الكالسيوم', d: 'تدخل أيونات الكالسيوم ($Ca^2+$) إلى الحويصلات.' },
+    { s: { ph: 3 }, t: '🟢 تحرير الأستيل كولين', d: 'إطلاق النواقل العصبية (الأستيل كولين) وتنتشر في الفراغ بين النهاية العصبية وغشاء الليفة.', q: 'الأستيل كولين رايح فين؟', o: ['مستقبلات على غشاء الليفة (الساركوليما)', 'داخل النواة', 'الحبل الشوكي'], a: 0 },
+    { s: { ph: 4, depol: true }, t: '🔄 إزالة الاستقطاب', d: 'يرتبط بالمستقبلات ← تزيد نفاذية الغشاء لأيونات <b>الصوديوم</b> التي تدخل بسرعة ← الداخل (+) والخارج (−) ← <b>+40 ملي ڤولت</b>.', q: 'الغشاء دلوقتي:', o: ['الداخل موجب والخارج سالب', 'الداخل سالب والخارج موجب', 'متعادل'], a: 0 },
+    { s: { ph: 5, depol: true, contract: true }, t: '💪 الانقباض', d: 'يتحرر الكالسيوم داخل الليفة، وتتكون الروابط المستعرضة بمساعدة $Ca^2+$ و ATP فتنقبض الليفة.' },
+    { s: { ph: 6, depol: true, contract: true }, t: '✂️ الكولين إستيريز', d: 'بعد جزء من الثانية يحطم الإنزيم الأستيل كولين إلى <b>كولين + حمض خليك</b> فيبطل مفعوله.', q: 'لو الإنزيم ده غاب؟', o: ['العضلة تفضل منقبضة (شد عضلي)', 'العضلة ما تنقبضش أصلاً', 'مفيش أي تأثير'], a: 0 },
+    { s: { ph: 7 }, t: '🔁 العودة للراحة', d: 'البوتاسيوم يندفع للخارج وتعود نفاذية الغشاء لحالتها الأصلية (الاستقطاب)، ثم يعود $Na^+$ و $K^+$ لأماكنهم ← العضلة تنبسط.' }
+  ];
+  let i = 0; const answered = new Set(); const done = isDone(key);
+  box.innerHTML = labHead(sc, m, 'Zoom على الوصلة') + '<div class="phase-dots"></div><div class="nw" style="width:100%;display:grid;justify-items:center;gap:10px"></div><div class="row"><button class="btn ghost small" id="nm-p">→ قبل</button><button class="btn small" id="nm-n">بعد ←</button></div>';
+  const draw = () => {
+    const p = P[i];
+    $('.phase-dots', box).innerHTML = P.map((x, k) => '<i class="' + (k <= i ? 'on' : '') + '"></i>').join('');
+    $('.nw', box).innerHTML = '<div class="dgbox">' + BIO.svgFor({ base: 'nmj', alt: 'تشابك عصبي عضلي: ' + plain(p.t) }, p.s) + '</div><div class="spot-card"><h3>' + F(p.t) + '</h3><div>' + F(p.d) + '</div></div><div class="nq" style="width:100%;display:grid;justify-items:center;gap:6px"></div><div class="note">رسم تخطيطي مبسّط.</div>';
+    const nb = $('#nm-n', box); $('#nm-p', box).disabled = i === 0;
+    if (p.q && !answered.has(i) && !done) {
+      nb.disabled = true;
+      $('.nq', box).innerHTML = '<div style="font-weight:700">🔮 ' + F(p.q) + '</div><div class="mcw" style="width:100%;display:grid;justify-items:center"></div>';
+      mountMCQ($('.mcw', box), { o: p.o, a: p.a }, { mode: 'learn', onDone() { answered.add(i); nb.disabled = false; nb.focus(); } });
+    } else nb.disabled = i === P.length - 1;
+    if (i === P.length - 1 && !isDone(key)) { finish(key, 'lab', 1); ready(); }
+  };
+  $('#nm-n', box).onclick = () => { if (i < P.length - 1) { i++; draw(); } };
+  $('#nm-p', box).onclick = () => { if (i > 0) { i--; draw(); } };
+  draw();
+  if (done) ready(false);
+}
+
+function labToxins(sc, box, key, m) {
+  const T = {
+    auto: { n: '🛡️ مرض مناعة ذاتية', s: { ph: 4, tox: 'auto' }, a: 'لا', d: 'الجسم يهاجم نفسه: أجسام مضادة تقوم بتكسير مستقبلات الأستيل كولين، فلا يجد ما يتصل به ← <b>شلل أو وهن (ضعف) عضلي</b>.' },
+    cobra: { n: '🐍 سم الكوبرا', s: { ph: 4, tox: 'cobra' }, a: 'لا', d: 'يشبه الأستيل كولين، يتصل بالمستقبلات ويمنع الأستيل كولين من القيام بعمله (لعبة الكراسي الموسيقية 🪑).' },
+    botox: { n: '💉 سم البوتولينيوم', s: { ph: 4, tox: 'botox' }, a: 'لا', d: 'يمنع تحرير الأستيل كولين وبالتالي لا تنقبض العضلة ← يستخدم في عمليات التجميل لتقليل تجاعيد الوجه الناتجة عن انقباض العضلات.' }
+  };
+  const tried = {}; let ok = 0; let cur = 'auto';
+  box.innerHTML = labHead(sc, m, 'سموم الوصلة العصبية العضلية') + '<div class="tabs" role="tablist"></div><div class="tw" style="width:100%;display:grid;justify-items:center;gap:10px"></div>';
+  const tabs = () => { const t = $('.tabs', box); t.innerHTML = ''; Object.keys(T).forEach(k => { const b = el('<button class="tok" role="tab" aria-selected="' + (k === cur) + '">' + (tried[k] ? '✓ ' : '') + T[k].n + '</button>'); b.onclick = () => { cur = k; tabs(); draw(); }; t.appendChild(b); }); };
+  const draw = () => {
+    const x = T[cur], tw = $('.tw', box);
+    tw.innerHTML = '<p class="body">السيال العصبي وصل… بس فيه <b>' + x.n + '</b>. 🔮 العضلة هتنقبض؟</p><div class="seg" role="group"><button data-v="نعم">نعم</button><button data-v="لا">لا</button></div><div class="tr" style="width:100%;display:grid;justify-items:center;gap:10px"></div>';
+    $$('.seg button', tw).forEach(b => b.onclick = () => {
+      const g = b.dataset.v === x.a; if (!tried[cur]) { tried[cur] = 1; if (g) ok++; }
+      $$('.seg button', tw).forEach(z => { z.disabled = true; z.setAttribute('aria-pressed', String(z === b)); });
+      $('.tr', tw).innerHTML = '<div class="dgbox zoomer">' + BIO.svgFor({ base: 'nmj', alt: x.n }, x.s) + '</div><div class="result"><b>' + (g ? '✅ توقعك صح' : '❌ لأ') + ' — العضلة لا تنقبض.</b><div>' + F(x.d) + '</div></div>';
+      tabs();
+      if (Object.keys(tried).length === 3 && !isDone(key)) { finish(key, 'lab', ok / 3); ready(); }
+    });
+  };
+  tabs(); draw();
+  if (isDone(key)) ready(false);
+}
+const LABS = { zoom: labZoom, sarc: labSarc, nmj: labNMJ, toxins: labToxins };
+const RENDER = { story: sStory, reveal: sReveal, mcq: sMCQ, calc: sCalc, order: sOrder, match: sMatch, sort: sSort, flip: sFlip, teach: sTeach, checkpoint: sCheckpoint, boss: sBoss, lab: sLab, complete: sComplete, finale: sFinale, explore: sExplore, find: sFind, label: sLabel, toggle: sToggle, journey: sJourney };
+
+/* ───── explore mode (labs + anatomy sandbox) ───── */
+const SANDBOX_TYPES = ['lab', 'explore', 'find', 'label', 'toggle', 'journey', 'calc', 'boss'];
+function rLabs() {
+  const st = shell('labs');
+  const v = el('<section class="view"><div class="page"><div class="page-h"><span class="big-ico">🔬</span><h1>استكشف</h1><p>كل الرسومات التفاعلية والمعامل والمعارك في مكان واحد. العب أي واحد تاني من غير ما تخسر تقدمك.</p></div><div class="cards"></div></div></section>');
+  st.appendChild(v);
+  const cards = $('.cards', v);
+  ORDER.filter(id => id !== 'final').forEach(id => MIS[id].scenes.forEach((sc, i) => {
+    if (!SANDBOX_TYPES.includes(sc.t)) return;
+    const k = id + ':' + i, dn = isDone(k);
+    const name = sc.title || sc.name || plain(sc.q || '').slice(0, 48);
+    const b = el('<button class="card ' + (dn ? 'done' : '') + '"><span class="ct">' + (sc.icon || '🔬') + ' ' + esc(name) + '</span><span class="cs">' + MIS[id].icon + ' ' + esc(MIS[id].title) + ' • ' + (KIND[sc.t] || '') + (dn ? ' • ✓' : '') + '</span></button>');
+    b.onclick = () => go({ name: 'sandbox', id, i }); cards.appendChild(b);
+  }));
+}
+function rSandbox() {
+  const st = shell('labs');
+  st.appendChild(el('<section class="view"><div class="scene-wrap" style="align-content:start"><div class="row" style="width:100%;max-width:720px;justify-content:space-between;margin-inline:auto"><button class="btn ghost small" id="sb-b">→ رجوع</button><button class="btn ghost small" id="sb-d">🔬 تعمّق</button></div><div class="scene anim-in" id="scene"></div><button id="b-next" hidden disabled></button></div></section>'));
+  const m = MIS[V.id], sc = m.scenes[V.i];
+  $('#sb-b').onclick = () => go({ name: 'labs' });
+  $('#sb-d').onclick = () => overlay('🔬 ' + m.title, m.deep);
+  RENDER[sc.t](sc, $('#scene'), V.id + ':' + V.i, m);
+}
+
+/* ───── exam arena ───── */
+let EX = null;
+function examBank() {
+  const bank = C.EXAM.slice();
+  // diagram questions generated from the anatomy hotspots (identify the highlighted bone)
+  const fr = C.FRONT, ids = ['clav', 'sternum', 'humerus', 'carpals', 'pelvis', 'femur', 'patella', 'tibia', 'fibula', 'tarsals', 'pubic', 'metacarp'];
+  ids.forEach((id, n) => {
+    const others = shuffle(ids.filter(x => x !== id)).slice(0, 3).map(x => fr[x].t);
+    const o = shuffle([fr[id].t].concat(others));
+    bank.push({ id: 'd' + n, m: ['clav', 'humerus', 'carpals', 'metacarp', 'pelvis', 'pubic', 'femur', 'patella', 'tibia', 'fibula', 'tarsals'].includes(id) ? 'limbs' : 'skull', q: '🔍 العظمة المحددة في الشكل هي:', dg: { base: 'front', alt: 'هيكل عظمي أمامي مع منطقة محددة', hl: fr[id] }, o, a: o.indexOf(fr[id].t), idea: fr[id].d });
+  });
+  return bank;
+}
+let BANK = null;
+function rExam() {
+  BANK = BANK || examBank();
+  const st = shell('exam');
+  const v = el('<section class="view"><div class="page" id="ex"></div></section>'); st.appendChild(v);
+  const box = $('#ex', v);
+  if (EX && EX.active) return examQ(box);
+  const filt = V.filter || 'all';
+  const ids = ORDER.filter(id => id !== 'final');
+  const pool = BANK.filter(q => filt === 'all' || q.m === filt);
+  const right = BANK.filter(q => S.exam[q.id] === 1).length;
+  box.innerHTML = '<div class="page-h"><span class="big-ico">🎯</span><h1>ساحة الامتحان</h1><p>أسئلة بنمط الامتحان: اختيار من متعدد، أسئلة رسم، علاقات بيانية، وفخاخ. إجابة واحدة لكل سؤال وبعدها الشرح.</p><p class="muted">حلّيت صح ' + right + ' من ' + BANK.length + ' سؤال.</p></div>' +
+    '<div class="filter" role="group" aria-label="اختار الموضوع"><button class="tok" aria-pressed="' + (filt === 'all') + '" data-f="all">🌐 الكل (' + BANK.length + ')</button>' + ids.map(id => '<button class="tok" aria-pressed="' + (filt === id) + '" data-f="' + id + '">' + MIS[id].icon + ' ' + esc(MIS[id].title) + ' (' + BANK.filter(q => q.m === id).length + ')</button>').join('') + '</div>' +
+    '<div class="row"><button class="btn pulse" id="ex-go">ابدأ ' + Math.min(10, pool.length) + ' أسئلة</button>' + (pool.length > 10 ? '<button class="btn ghost small" id="ex-all">كل الـ ' + pool.length + '</button>' : '') + (BANK.some(q => S.exam[q.id] === 0) ? '<button class="btn ghost small" id="ex-wrong">🔁 أسئلتي الغلط بس</button>' : '') + '</div>';
+  $$('[data-f]', box).forEach(b => b.onclick = () => { EX = null; go({ name: 'exam', filter: b.dataset.f }); });
+  const start = list => { EX = { active: true, list, i: 0, score: 0, res: [] }; examQ(box); };
+  $('#ex-go', box).onclick = () => start(shuffle(pool).slice(0, 10));
+  if ($('#ex-all', box)) $('#ex-all', box).onclick = () => start(shuffle(pool));
+  if ($('#ex-wrong', box)) $('#ex-wrong', box).onclick = () => start(shuffle(BANK.filter(q => S.exam[q.id] === 0)));
+}
+function examQ(box) {
+  const q = EX.list[EX.i];
+  if (!q) return examEnd(box);
+  box.innerHTML = '<div class="page-h"><span class="kicker">🎯 سؤال ' + (EX.i + 1) + ' من ' + EX.list.length + ' • ' + MIS[q.m].icon + ' ' + esc(MIS[q.m].title) + '</span><div class="bar" style="width:100%;max-width:400px"><i style="width:' + Math.round(100 * EX.i / EX.list.length) + '%"></i></div><h2 class="q">' + F(q.q) + '</h2></div>' +
+    (q.dg ? '<div class="row"><div class="dgbox">' + BIO.svgFor(q.dg, null, hlSpot(q.dg)) + '</div></div>' : '') + '<div class="mcw" style="display:grid;justify-items:center;gap:12px"></div>';
+  $('.q', box).setAttribute('tabindex', '-1'); $('.q', box).focus({ preventScroll: true });
+  mountMCQ($('.mcw', box), q, { mode: 'exam', onDone(r) {
+    const ok = r === 1;
+    if (ok && !S.examXP[q.id]) { S.examXP[q.id] = 1; addXP(XP.exam, KIND.exam); }
+    S.exam[q.id] = ok ? 1 : 0; save(); EX.score += ok ? 1 : 0; EX.res.push([q, ok]);
+    const nb = el('<button class="btn" id="b-next">' + (EX.i + 1 < EX.list.length ? 'السؤال الجاي ←' : 'النتيجة 🏁') + '</button>');
+    nb.onclick = () => { EX.i++; examQ(box); }; $('.mcw', box).appendChild(nb);
+  } });
+}
+function examEnd(box) {
+  const n = EX.list.length, s = EX.score, wrong = EX.res.filter(r => !r[1]);
+  EX.active = false;
+  box.innerHTML = '<div class="page-h"><span class="big-ico">' + (s / n >= .8 ? '🏆' : s / n >= .5 ? '💪' : '📘') + '</span><div class="score"><bdi dir="ltr">' + s + ' / ' + n + '</bdi></div><p>' + (s / n >= .8 ? 'أداء امتحان حقيقي!' : s / n >= .5 ? 'كويس — راجع الغلطات تحت.' : 'كل غلطة هنا = نقطة مش هتغلط فيها في الامتحان.') + '</p></div>' +
+    (wrong.length ? '<h3 style="text-align:center">🔁 راجع غلطاتك</h3><div class="cards">' + wrong.map(([q]) => '<div class="card"><span class="cs">' + MIS[q.m].icon + ' ' + esc(MIS[q.m].title) + '</span><span>' + F(q.q) + '</span><span style="color:var(--ok)">✓ ' + F(q.o[q.a]) + '</span><span class="cs">' + F(q.idea || '') + '</span></div>').join('') + '</div>' : '') +
+    '<div class="row"><button class="btn" id="ex-again">جولة جديدة</button><button class="btn ghost small" id="ex-map">🗺️ الرحلة</button></div>';
+  $('#ex-again', box).onclick = () => go({ name: 'exam', filter: V.filter });
+  $('#ex-map', box).onclick = () => go({ name: 'map' });
+}
+
+/* ───── review ───── */
+const BOX_MS = [0, 5 * 60e3, 864e5, 3 * 864e5, 7 * 864e5, 14 * 864e5];
+let RV = null;
+function rReview() {
+  const st = shell('review');
+  const v = el('<section class="view"><div class="page" id="rv"></div></section>'); st.appendChild(v);
+  const box = $('#rv', v);
+  if (RV && RV.active) return RV.kind === 'cards' ? cardStep(box) : rapidStep(box);
+  const started = C.MISSIONS.filter(m => startedMission(m.id)), avail = CARDS.filter(c => startedMission(c.m)), due = dueCards();
+  box.innerHTML = '<div class="page-h"><span class="big-ico">🔁</span><h1>مراجعة</h1><p>اللي اتعلمته بيرجعلك على فترات: كارت افتكرته بيستنى أكتر، وكارت نسيته بيرجع بسرعة.</p></div>' +
+    (avail.length ? '<div class="cards"><button class="card" id="rv-cards"><span class="ct">🧠 كروت الذاكرة</span><span class="cs">' + due.length + ' مستحقة الآن من ' + avail.length + '</span></button><button class="card" id="rv-rapid"><span class="ct">⚡ استرجاع سريع</span><span class="cs">8 أسئلة سريعة من المهام اللي بدأتها</span></button><button class="card" id="rv-find"><span class="ct">🦴 اسم العظمة بسرعة</span><span class="cs">نقطة على الهيكل… قول اسمها</span></button></div><p class="muted" style="text-align:center">المهام اللي بدأتها: ' + started.map(m => m.icon).join(' ') + '</p>'
+      : '<p style="text-align:center" class="muted">لسه مفيش حاجة تتراجع. ابدأ أول مهمة من الخريطة، والكروت هتظهر هنا.</p><div class="row"><button class="btn" id="rv-go">🗺️ للخريطة</button></div>');
+  if ($('#rv-go', box)) $('#rv-go', box).onclick = () => go({ name: 'map' });
+  if ($('#rv-cards', box)) $('#rv-cards', box).onclick = () => { RV = { active: true, kind: 'cards', list: (due.length ? shuffle(due) : shuffle(avail)).slice(0, 12), i: 0, known: 0, flipped: false }; cardStep(box); };
+  if ($('#rv-rapid', box)) $('#rv-rapid', box).onclick = () => { const qs = []; started.forEach(m => m.scenes.forEach(sc => { if (sc.t === 'mcq') qs.push(sc); })); RV = { active: true, kind: 'rapid', list: shuffle(qs).slice(0, 8), i: 0, ok: 0 }; rapidStep(box); };
+  if ($('#rv-find', box)) $('#rv-find', box).onclick = () => { BANK = BANK || examBank(); RV = { active: true, kind: 'rapid', list: shuffle(BANK.filter(q => q.dg)).slice(0, 8), i: 0, ok: 0 }; rapidStep(box); };
+}
+function cardStep(box) {
+  const c = RV.list[RV.i];
+  if (!c) {
+    RV.active = false; const today = new Date().toDateString();
+    box.innerHTML = '<div class="page-h"><span class="big-ico">✅</span><h1>خلصت الكروت</h1><p>افتكرت ' + RV.known + ' من ' + RV.list.length + '. الكروت اللي نسيتها هترجعلك بعد شوية.</p></div><div class="row"><button class="btn" id="rv-b">رجوع</button></div>';
+    if (S.revDay !== today && RV.list.length >= 5) { S.revDay = today; save(); addXP(10, '🔁 مراجعة'); }
+    $('#rv-b', box).onclick = () => go({ name: 'review' }); return;
+  }
+  box.innerHTML = '<div class="page-h"><span class="kicker recall">🧠 كارت ' + (RV.i + 1) + ' من ' + RV.list.length + ' • ' + MIS[c.m].icon + '</span><button class="linkbtn" id="rv-quit">إنهاء الجلسة</button></div><div class="row"><div class="fcard"><div>' + F(c.f) + '</div>' + (RV.flipped ? '<div class="back anim-in">' + F(c.b) + '</div>' : '<div class="muted">افتكر الإجابة في دماغك الأول…</div>') + '</div></div><div class="row" id="rv-act"></div>';
+  $('#rv-quit', box).onclick = () => { RV = null; go({ name: 'review' }); };
+  const act = $('#rv-act', box);
+  if (!RV.flipped) { const b = el('<button class="btn" id="b-next">👀 اكشف</button>'); b.onclick = () => { RV.flipped = true; cardStep(box); }; act.appendChild(b); b.focus(); }
+  else {
+    const rec = S.cards[c.id] || { box: 0 };
+    const no = el('<button class="btn ghost">😅 نسيتها</button>'), yes = el('<button class="btn" id="b-next">✅ افتكرتها</button>');
+    no.onclick = () => { S.cards[c.id] = { box: 1, due: Date.now() + BOX_MS[1] }; save(); RV.i++; RV.flipped = false; cardStep(box); };
+    yes.onclick = () => { const bx = Math.min(5, (rec.box || 0) + 1); S.cards[c.id] = { box: bx, due: Date.now() + BOX_MS[bx] }; save(); RV.known++; RV.i++; RV.flipped = false; cardStep(box); };
+    act.appendChild(no); act.appendChild(yes); yes.focus();
+  }
+}
+function rapidStep(box) {
+  const q = RV.list[RV.i];
+  if (!q) { RV.active = false; box.innerHTML = '<div class="page-h"><span class="big-ico">⚡</span><div class="score"><bdi dir="ltr">' + RV.ok + ' / ' + RV.list.length + '</bdi></div><p>خلصت.</p></div><div class="row"><button class="btn" id="rv-b">رجوع</button></div>'; $('#rv-b', box).onclick = () => go({ name: 'review' }); return; }
+  box.innerHTML = '<div class="page-h"><span class="kicker recall">⚡ ' + (RV.i + 1) + ' من ' + RV.list.length + '</span><button class="linkbtn" id="rv-quit">إنهاء الجلسة</button><h2 class="q">' + F(q.q) + '</h2></div>' + (q.dg ? '<div class="row"><div class="dgbox">' + BIO.svgFor(q.dg, null, hlSpot(q.dg)) + '</div></div>' : '') + '<div class="mcw" style="display:grid;justify-items:center;gap:12px"></div>';
+  $('#rv-quit', box).onclick = () => { RV = null; go({ name: 'review' }); };
+  mountMCQ($('.mcw', box), q, { mode: 'exam', onDone(r) { if (r === 1) RV.ok++; const nb = el('<button class="btn" id="b-next">التالي ←</button>'); nb.onclick = () => { RV.i++; rapidStep(box); }; $('.mcw', box).appendChild(nb); nb.focus({ preventScroll: true }); } });
+}
+
+/* ───── final mental model ───── */
+function rModel() {
+  const st = shell('model');
+  const v = el('<section class="view"><div class="page"><div class="page-h"><span class="big-ico">🌌</span><h1>الصورة الكاملة</h1><p>الحركة = جهاز عصبي يأمر + جهاز عضلي ينقبض + جهاز هيكلي يتحرك. كل جزء فتحته منوّر.</p></div><div class="model-grid"><div class="model-body"><img src="assets/images/skeleton-front.svg" alt=""></div><div class="mtree"></div></div></div></section>');
+  st.appendChild(v);
+  const bdy = $('.model-body', v);
+  ORDER.forEach(id => { if (S.done[id]) { const p = MIS[id].spot; bdy.appendChild(el('<span class="glow" style="left:' + p.x + '%;top:' + p.y + '%;width:34%"></span>')); } });
+  const node = id => { const m = MIS[id]; return '<button class="mnode ' + (S.done[id] ? 'on' : '') + '" data-id="' + id + '"><span class="mt">' + m.icon + ' ' + esc(m.title) + '</span><span class="mchips">' + m.concepts.map(c => '<span>' + F(c) + '</span>').join('') + '</span></button>'; };
+  $('.mtree', v).innerHTML = node('skeleton') +
+    '<div class="mbr"><div class="mcol"><div class="bt">🦴 الدعامة</div>' + ['spine', 'skull', 'limbs', 'joints', 'ligaments'].map(node).join('') + '</div><div class="mcol"><div class="bt">💪 الحركة</div>' + ['muscles', 'contraction', 'fatigue'].map(node).join('') +
+    '<div class="mnode"><span class="mt">🔬 مستويات Zoom</span><div class="chain"><span>عضلة</span><i>←</i><span>حزمة</span><i>←</i><span>ليفة</span><i>←</i><span>ليفية</span><i>←</i><span>ساركومير</span><i>←</i><span>أكتين / ميوسين</span></div></div></div></div>' +
+    '<div class="mnode ' + (S.done.final ? 'on' : '') + '"><span class="mt">🧠 ← 💪 ← 🦴 قصة حركة واحدة</span><div class="chain"><span>فكرة</span><i>←</i><span>المخ</span><i>←</i><span>الحبل الشوكي</span><i>←</i><span>العصب الحركي</span><i>←</i><span>Ca → أستيل كولين</span><i>←</i><span>Na: إزالة استقطاب</span><i>←</i><span>Ca + ATP: روابط</span><i>←</i><span>انقباض</span><i>←</i><span>وتر</span><i>←</i><span>عظم</span><i>←</i><span>مفصل</span></div></div>';
+  $$('.mnode[data-id]', v).forEach(b => b.onclick = () => overlay('🔬 ' + MIS[b.dataset.id].title, MIS[b.dataset.id].deep));
+}
+
+/* ───── keyboard ───── */
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && $('.ovl')) { closeOverlay(); return; }
+  if ($('.ovl')) return;
+  const tag = (e.target.tagName || '').toLowerCase();
+  if (tag === 'textarea' || tag === 'input' || tag === 'select') return;
+  if (/^[1-5]$/.test(e.key)) { const b = $$('.opt:not(:disabled)').find(x => x.dataset.k === e.key); if (b) { e.preventDefault(); b.click(); } }
+  else if (e.key === 'Enter' && e.target === document.body) { const n = $('#b-next'); if (n && !n.disabled && !n.hidden) { e.preventDefault(); n.click(); } }
+});
+
+render();
+window.__BQ = { get S() { return S; }, go, MIS, F, get V() { return V; } };
+})();
+</script>
+</body>
+</html>

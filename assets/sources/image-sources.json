@@ -1,0 +1,32 @@
+[
+  {
+    "local_file": "assets/images/skeleton-front.svg",
+    "title": "Human skeleton front no-text no-color.svg",
+    "source_url": "https://commons.wikimedia.org/wiki/File:Human_skeleton_front_no-text_no-color.svg",
+    "file_url": "https://upload.wikimedia.org/wikipedia/commons/a/ac/Human_skeleton_front_no-text_no-color.svg",
+    "creator": "Mariana Ruiz Villarreal (LadyofHats)",
+    "license": "Public domain",
+    "modified": false,
+    "notes": "Used unmodified; interactive hotspots are drawn on top at runtime.",
+    "accessed": "2026-10-02"
+  },
+  {
+    "local_file": "assets/images/skeleton-back.svg",
+    "title": "Human skeleton back no-text no-color.svg",
+    "source_url": "https://commons.wikimedia.org/wiki/File:Human_skeleton_back_no-text_no-color.svg",
+    "file_url": "https://upload.wikimedia.org/wikipedia/commons/7/7b/Human_skeleton_back_no-text_no-color.svg",
+    "creator": "Mariana Ruiz Villarreal (LadyofHats)",
+    "license": "Public domain",
+    "modified": false,
+    "notes": "Used unmodified; interactive hotspots are drawn on top at runtime.",
+    "accessed": "2026-10-02"
+  },
+  {
+    "local_file": "visuals.js (inline SVG)",
+    "title": "Spine, vertebra, rib cage, knee, synovial joint, forearm, pelvis, muscle zoom levels, sarcomere, neuromuscular junction, joint shapes, muscle types, graphs",
+    "creator": "Drawn for this game",
+    "license": "Original work for personal study use",
+    "modified": false,
+    "notes": "Simplified teaching diagrams; each simplified one is labelled as such in the game."
+  }
+]
